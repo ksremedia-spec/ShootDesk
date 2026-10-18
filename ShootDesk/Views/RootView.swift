@@ -4,7 +4,7 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @State private var tab: AppTab = .today
 
-    enum AppTab: Hashable { case today, listings, customers, money, ask, settings }
+    enum AppTab: String, Hashable { case today, listings, customers, money, ask, settings }
 
     var body: some View {
         TabView(selection: $tab) {
@@ -31,6 +31,11 @@ struct RootView: View {
         .onAppear {
             if !model.hasAryeoKey { tab = .settings }
             if model.openShootID != nil || model.openTonight || model.openBooking || model.openAvailability { tab = .today }
+            // The cloud build's screenshot tour launches the app once per tab with "-startTab listings" and so on.
+            // Nothing in normal use passes this, so it changes nothing on the phone.
+            if let wanted = UserDefaults.standard.string(forKey: "startTab"), let start = AppTab(rawValue: wanted) {
+                tab = start
+            }
         }
         // A tap on the Home Screen widget opens that shoot on the Today tab.
         .onChange(of: model.openShootID) { _, id in

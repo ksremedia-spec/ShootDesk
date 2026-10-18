@@ -58,17 +58,30 @@ Claude Code in the cloud runs on Linux and cannot compile or run an iOS app itse
 is the 27.1 Release Candidate, build 27A9275, per the run log). The loop from a phone is: edit → commit → push →
 open the repo's Actions tab → green check or red X.
 
-- A green check means the app COMPILES (for the simulator, unsigned). It does not mean it looks right or works;
-  that still needs eyes on the simulator (Kyle's Mac) or the real phone. Say "compiles on GitHub", never "works".
-  A build for the real phone needs Kyle's signing, so it happens on his Mac.
-- On a red X: read the "Errors and warnings" step of that run. Claude Code in the cloud reads runs and job logs
-  itself through the GitHub connector; Kyle doesn't need to paste anything. Fix, push, wait. Same error twice →
-  stop and explain.
-- The workflow also tries to launch the app on an iPhone Duo simulator and save a screenshot in the run's
-  artifacts (`build-output`). Known since the first runs: GitHub's image has the iPhone Duo device but only the
-  iOS 27.0 simulator, and the Duo needs 27.1, so the step skips itself ("This runner's iOS runtime can't run the
-  iPhone Duo yet") and there's no screenshot. Assumed: it starts working by itself once GitHub's image gets the
-  iOS 27.1 simulator. (With no Aryeo key in the cloud the app would show its Settings screen; that's expected.)
+- A green check means the app COMPILES (for the simulator, unsigned) and, if the run's summary page says
+  "Launch check: the app opened on ...", that it also opened on a simulator on every tab, light and dark, without
+  crashing. It does not mean it looks right or works; that still needs eyes on the Duo simulator (Kyle's Mac) or the
+  real phone. Say "compiles and opens on GitHub", never "works". If the summary says "Launch check skipped", only the
+  compile is proven. A build for the real phone needs Kyle's signing, so it happens on his Mac.
+- On a red X: read the "Errors and warnings" step of that run for compile errors. If the summary says "Launch check
+  failed", read the "Open the app on a simulator" step (it prints the error lines iOS logged about the app) and
+  `launch-check/app-log.txt` plus `launch-check/crashes/` (if present) in the build-output artifact. Claude Code in the
+  cloud reads runs and job logs itself through the GitHub connector; Kyle doesn't need to paste anything. Fix, push,
+  wait. Same error twice → stop and explain.
+- After compiling, the workflow opens the app on a simulator once per tab (Today, Listings, Customers, Money, Ask,
+  Settings), in light and then dark: 12 launches, a screenshot of each, launched with the `-startTab <tab>` argument
+  that `RootView` honors for exactly this (added Oct 17; nothing else passes it). The screenshots are pushed to the
+  `screenshots` branch, github.com/ksremedia-spec/ShootDesk/tree/screenshots, one commit replaced on every build
+  (the README there shows them inline, fine on a phone), and are also in the build-output artifact with
+  `launch-check/app-log.txt`. It tries the iPhone Duo first; GitHub's image has the Duo device but only the iOS 27.0
+  simulator, which the Duo refuses, so it opens on a regular iPhone already on the runner (the image has iPhone 17,
+  17e, 18 Pro and Air; the summary line says which, and why it's not the Duo). Assumed: the Duo starts being used by
+  itself once the image gets iOS 27.1. With no Aryeo key in the cloud every tab shows its empty state; on a regular
+  iPhone the 5th and 6th tabs may sit under a "More" tab, so Money, Ask and Settings may appear inside More.
+  Red only if the app crashed (a launch the simulator refused and a crash report, or the process gone when checked);
+  any simulator problem skips with a message instead. The boot wait is capped at 5 minutes for the same reason.
+  Claude Code in the cloud can't download artifacts (network rule) but CAN read the screenshots branch through
+  raw.githubusercontent.com, so it can look at the pictures and describe them.
 - Known warning, not an error: `App/Booking.swift:330`, Siri booking's `requestConfirmation(result:...)` is
   deprecated (Apple suggests `requestConfirmation(conditions:actionName:dialog:)`). Deprecated still works. Left
   alone on purpose: it's booking code and Siri booking hasn't been tried on a phone. Raise it, don't change it unasked.
@@ -99,6 +112,8 @@ press them while you take screenshots.
 
 ## Verify, in this order (take a screenshot for each)
 
+0. No Mac needed: open github.com/ksremedia-spec/ShootDesk/tree/screenshots after a green build. Twelve pictures,
+   every tab light and dark, on a regular iPhone with no key: empty states only. Proves the app opens; nothing else.
 1. FOLDED Listings tab: the Upcoming rail must stop at the vertical tab-bar pill. Scroll the rail to its end:
    the last card fully visible, not under the pill. Then: Today tab rails, an agent page rail (Customers), a
    shoot page's "This house before" rail and hourly forecast chips. Check the OPEN pose too (side column on
@@ -142,7 +157,10 @@ typing an address into Book a shoot (the simulator wouldn't take typing from aut
   wrap-up text, house notes that come back, money per hour by package/town, quiet-agent nudges, owed-to-you
   list, assessor house facts, twilight slot suggestions. CarPlay stays v2. Kyle does not want the full-page widget.
 - Asked Kyle Oct 17, waiting on his answer: (a) the Next Shoot widget still offers the full-page size on iOS 27
-  (`.systemExtraLargePortrait` in `NextShootWidget.swift`, drawn with the large layout); remove it from the
-  picker? (b) a cloud "does it open" check: launch on a regular iPhone simulator (the runner has iOS 27.0) and
-  save a screenshot; proves only that the app starts. (c) swap the deprecated Siri confirm call once Siri
-  booking can be tried on the phone.
+  (`.systemExtraLargePortrait` in `NextShootWidget.swift`, drawn with the large layout and up to 9 "coming up"
+  rows instead of 3); remove it from the picker? He asked for a plain-English explanation first. (b) swap the
+  deprecated Siri confirm call once Siri booking can be tried on the phone. (The cloud "does it open" check was
+  asked for and built Oct 17; see "How building works now".)
+- Kyle asked Oct 17 to "show every page screenshots". The cloud can only show empty states on a regular iPhone
+  (built as the tab tour above). Real pages with his shoots, on the Duo, folded and open, need his Mac. If he wants
+  filled-in cloud screenshots, that means a demo-data mode with made-up shoots: a real feature, ask first.

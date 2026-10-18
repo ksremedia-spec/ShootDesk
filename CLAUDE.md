@@ -12,6 +12,7 @@ Current state, unbuilt changes and the verification list live in `HANDOFF.md`. R
 - XcodeGen project: run `xcodegen` here to regenerate `ShootDesk.xcodeproj` after adding or removing files (`brew install xcodegen`).
 - SwiftUI app, iOS 17+ deployment target, Swift 5 language mode, iPhone only. Built and run on the iPhone Duo simulator (iOS 27.1, Xcode 27.1).
 - No third-party packages. Maps are Apple Maps (MapKit); the Directions button opens the Google Maps app if it's installed, otherwise Google Maps on the web.
+- Every push to `main` is compiled on GitHub's cloud Mac (`.github/workflows/build.yml`), which then opens the app once per tab for screenshots using the `-startTab <tab>` launch argument that `RootView` honors. Nothing else passes it; don't build features on it. Details in `HANDOFF.md`, "How building works now".
 
 **Source folders**
 - `ShootDesk/Core/`: pure Foundation (models, Aryeo/Claude/weather/MassGIS clients, rules, evening check, on-disk order cache, widget data, Live Activity attributes). Also compiled into the widget. `Package.swift` + `Tools/CoreCheck` exist only to run Core on its own; Xcode ignores them.

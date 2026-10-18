@@ -1,8 +1,11 @@
-# Builds ShootDesk on one of GitHub's cloud Macs every time code is pushed.
-# Green check = the app compiles, and it opened on a simulator without crashing in its first 10 seconds.
+# Builds ShootDesk on one of GitHub's cloud Macs every time code is pushed, then opens it on a simulator.
+# Green check = the app compiles. The run's summary page then says one of two things:
+#   "Launch check: the app opened on the <simulator> ..."  (every tab opened, light and dark, no crash), or
+#   "Launch check skipped: ..."  (no usable simulator, so the app was NOT opened; green means only that it compiles).
 # Red X = open the run: the "Errors and warnings" step for compile errors, the "Open the app" step for a crash.
-# The run's summary page says which simulator the app opened on; the screenshot and the app's launch log are in
-# the build-output artifact, folder launch-check (the app shows its Settings screen: there's no Aryeo key in the cloud).
+# Screenshots of every tab go to the "screenshots" branch (github.com/<owner>/ShootDesk/tree/screenshots) and, with the
+# app's launch log, into the build-output artifact, folder launch-check. There's no Aryeo key in the cloud, so every
+# tab shows its empty state, on a regular iPhone until GitHub's Macs get the iOS 27.1 simulator the Duo needs.
 name: Build ShootDesk
 
 on:
@@ -10,6 +13,9 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write            # lets the last step push the screenshots branch; everything else only reads
 
 jobs:
   build:
@@ -52,28 +58,35 @@ jobs:
           echo "== Warnings =="
           grep -E "warning:" build.log | sort -u | head -60 || echo "none"
 
-      # Proves only that the app starts and is still running 10 seconds later; it can't prove anything looks right.
-      # Prefers the iPhone Duo. GitHub's image has the Duo device but (as of Oct 2026) only the iOS 27.0 simulator,
-      # which the Duo refuses, so until that changes the app opens on a regular iPhone that's already on the runner.
-      # Red only if the app crashed. No usable simulator = "skipped", not red.
-      - name: Open the app on a simulator and take a screenshot
+      # Proves that the app starts, on every tab, in light and dark, and is still running a few seconds after each
+      # launch. It can't prove anything looks right. Prefers the iPhone Duo; GitHub's image has the Duo device but
+      # (as of Oct 2026) only the iOS 27.0 simulator, which the Duo refuses, so until that changes it uses a regular
+      # iPhone that's already on the runner. Red only if the app crashed. No usable simulator = "skipped", not red.
+      - name: Open the app on a simulator, every tab, and take screenshots
         if: success()
         run: |
           summary() { echo "$1"; echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
-          skip() { summary "Launch check skipped: $1."; exit 0; }
-          mkdir -p launch-check
+          skip() { summary "Launch check skipped: $1. The app was NOT opened; green here means only that it compiles."; exit 0; }
+          # A ShootDesk crash report newer than this marker means the app crashed during this step.
+          mkdir -p launch-check && touch launch-check/.started
+          crashed() { find ~/Library/Logs/DiagnosticReports -maxdepth 1 -name 'ShootDesk*' -newer launch-check/.started 2>/dev/null | grep -q .; }
 
           echo "== iOS runtimes on this runner =="
           xcrun simctl list runtimes | grep "iOS" || true
           # Newest iOS runtime, e.g. com.apple.CoreSimulator.SimRuntime.iOS-27-1
           RT=$(xcrun simctl list runtimes | grep "^iOS" | awk '{print $NF}' | sort -t- -k2,2n -k3,3n | tail -1)
+          RTNAME=$(echo "$RT" | sed -E 's/.*iOS-([0-9]+)-([0-9]+)$/iOS \1.\2/')
           DT=$(xcrun simctl list devicetypes | grep -i "iPhone Duo" | head -1 | sed -E 's/.*\((com\.apple[^)]*)\).*/\1/')
 
-          UDID=""; DEVICE=""
+          UDID=""; DEVICE=""; NOTE=""
           if [ -n "$DT" ] && [ -n "$RT" ] && UDID=$(xcrun simctl create "Duo-CI" "$DT" "$RT"); then
-            DEVICE="iPhone Duo, $(echo "$RT" | sed -E 's/.*iOS-([0-9]+)-([0-9]+)$/iOS \1.\2/')"
+            DEVICE="iPhone Duo, $RTNAME"
           else
-            echo "This runner's iOS can't run the iPhone Duo yet; opening on a regular iPhone instead."
+            if [ -z "$DT" ]; then WHY="this runner has no iPhone Duo"
+            elif [ -z "$RT" ]; then WHY="this runner has no iOS simulator"
+            else WHY="this runner's newest iOS simulator ($RTNAME) can't run the iPhone Duo yet"; fi
+            echo "$WHY; opening on a regular iPhone instead."
+            NOTE=" (Not the Duo: $WHY.)"
             # First iPhone already set up on the runner, with the iOS version header above it.
             PICK=$(xcrun simctl list devices available | awk '/^-- iOS/{rt=$0} /^[[:space:]]+iPhone / && !/Duo/{print rt "|" $0; exit}')
             [ -n "$PICK" ] || skip "no iPhone simulator on this runner"
@@ -84,33 +97,84 @@ jobs:
           fi
           echo "Simulator: $DEVICE ($UDID)"
 
-          xcrun simctl bootstatus "$UDID" -b || skip "the $DEVICE simulator wouldn't boot"
+          # Boot, with a 5-minute cap so a stuck simulator skips instead of running into the job's 45-minute limit.
+          perl -e 'alarm shift; exec @ARGV' 300 xcrun simctl bootstatus "$UDID" -b || skip "the $DEVICE simulator didn't finish booting within 5 minutes"
           APP=$(find build/Build/Products -name "ShootDesk.app" -maxdepth 2 | head -1)
           [ -n "$APP" ] || skip "couldn't find the built ShootDesk.app"
           xcrun simctl install "$UDID" "$APP" || skip "couldn't install the app on the simulator"
-          # Say yes to location up front, so the screenshot isn't a permission box.
+          # Say yes to location up front, so no screenshot is a permission box.
           xcrun simctl privacy "$UDID" grant location com.horizonhomemedia.shootdesk || true
-          xcrun simctl launch "$UDID" com.horizonhomemedia.shootdesk || skip "the simulator refused to launch the app"
-          echo "Launched; waiting 10 seconds"
-          sleep 10
 
-          xcrun simctl io "$UDID" screenshot launch-check/launch.png || echo "Couldn't take the screenshot."
-          # What the app logged while opening (goes into the build-output artifact).
-          xcrun simctl spawn "$UDID" log show --last 2m --style compact --predicate 'process == "ShootDesk"' \
+          # Opens the app on one tab, replacing any running copy. Retries, because the simulator sometimes refuses a
+          # launch right after an install; and iOS 27's simulator sometimes reports an error although the app is up.
+          launch_tab() {
+            local try out
+            for try in 1 2 3; do
+              if out=$(xcrun simctl launch --terminate-running-process "$UDID" com.horizonhomemedia.shootdesk -startTab "$1" 2>&1); then
+                echo "$out"; return 0
+              fi
+              echo "$out"
+              sleep 5
+              if pgrep -x ShootDesk > /dev/null; then echo "The launch command reported an error but ShootDesk is running; carrying on."; return 0; fi
+            done
+            return 1
+          }
+
+          # One launch per tab, light then dark. With no Aryeo key in the cloud every tab shows its empty state.
+          FAILED=""; REFUSED=""; COUNT=0
+          for look in light dark; do
+            xcrun simctl ui "$UDID" appearance "$look" || echo "Couldn't switch the simulator to $look."
+            for tab in today listings customers money ask settings; do
+              shot="$look-$tab"
+              if ! launch_tab "$tab"; then
+                sleep 5   # give the Mac a moment to write a crash report, if there is one
+                if crashed; then
+                  echo "::error::ShootDesk died while opening on the $tab tab ($look)."
+                  FAILED="$FAILED $shot"
+                else
+                  echo "The simulator wouldn't open the app on the $tab tab ($look) and left no crash report."
+                  REFUSED="$REFUSED $shot"
+                fi
+                continue
+              fi
+              sleep 6
+              if pgrep -x ShootDesk > /dev/null; then
+                xcrun simctl io "$UDID" screenshot "launch-check/$shot.png" && COUNT=$((COUNT + 1)) || echo "Couldn't take the $shot screenshot."
+              else
+                echo "::error::ShootDesk was gone 6 seconds after opening on the $tab tab ($look)."
+                FAILED="$FAILED $shot"
+              fi
+            done
+          done
+
+          # What iOS logged about the app during the tour (full copy in the public build-output artifact; error lines
+          # here). Safe to publish: the app itself logs nothing, there's no key on GitHub's Mac, and without a key it
+          # downloads no orders.
+          xcrun simctl spawn "$UDID" log show --last 10m --style compact --predicate 'process == "ShootDesk"' \
             > launch-check/app-log.txt 2>&1 || true
+          echo "== Error-level lines iOS logged about the app =="
+          grep -iE "error|fault|crash|exception|fatal" launch-check/app-log.txt | tail -40 || echo "none"
+          xcrun simctl shutdown "$UDID" || true
+          sleep 5   # a crash near the end may still be getting its report written
 
-          if pgrep -x ShootDesk > /dev/null; then
-            summary "Launch check: the app opened on the $DEVICE simulator and was still running after 10 seconds. Screenshot: build-output artifact, launch-check/launch.png."
-            xcrun simctl shutdown "$UDID" || true
-          else
+          if [ -n "$FAILED" ] || crashed; then
             mkdir -p launch-check/crashes
-            cp ~/Library/Logs/DiagnosticReports/ShootDesk* launch-check/crashes/ 2>/dev/null || true
-            summary "Launch check FAILED: ShootDesk was not running 10 seconds after it was launched on the $DEVICE simulator, so it most likely crashed. See launch-check/app-log.txt and launch-check/crashes/ in the build-output artifact."
-            xcrun simctl shutdown "$UDID" || true
+            if cp ~/Library/Logs/DiagnosticReports/ShootDesk* launch-check/crashes/ 2>/dev/null; then
+              WHERE="launch-check/app-log.txt and launch-check/crashes/"
+            else
+              WHERE="launch-check/app-log.txt (no crash report had been written yet)"
+            fi
+            [ -n "$FAILED" ] || FAILED=" (a crash report appeared during the tour)"
+            summary "Launch check failed on the $DEVICE simulator: the app crashed or was gone when checked, for:$FAILED. See $WHERE in the build-output artifact."
             exit 1
           fi
+          if [ -n "$REFUSED" ]; then
+            summary "Launch check: the app opened on the $DEVICE simulator for $COUNT of 12 tab launches; the simulator wouldn't open it for:$REFUSED (no crash report, so most likely a simulator hiccup, not the app).$NOTE"
+          else
+            summary "Launch check: the app opened on the $DEVICE simulator, every tab in light and dark (12 launches), and was still running after each. $COUNT screenshots saved.$NOTE"
+          fi
 
-      - name: Save the build log, screenshot and launch log
+      - name: Save the build log, screenshots and launch log
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -119,3 +183,33 @@ jobs:
             build.log
             launch-check/
           if-no-files-found: ignore
+
+      # Puts the tour's screenshots where a phone can see them: one commit on the "screenshots" branch, replaced on
+      # every build (no history, so the repo stays small). Open github.com/<owner>/ShootDesk/tree/screenshots.
+      - name: Publish the screenshots to the "screenshots" branch
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          shots=(launch-check/light-*.png launch-check/dark-*.png)
+          if [ ${#shots[@]} -eq 0 ]; then echo "No screenshots to publish."; exit 0; fi
+          DIR=$(mktemp -d)
+          cp "${shots[@]}" "$DIR/"
+          {
+            echo "# ShootDesk screenshots"
+            echo
+            echo "Taken by the cloud build on GitHub's Mac, on a regular iPhone simulator with no Aryeo key, so every tab shows its empty state."
+            echo "Build ${GITHUB_RUN_NUMBER}, commit ${GITHUB_SHA:0:7}, $(date -u '+%Y-%m-%d %H:%M UTC'). Replaced on every push to main."
+            echo
+            for f in "$DIR"/light-*.png "$DIR"/dark-*.png; do
+              n=$(basename "$f" .png)
+              echo "## $n"; echo; echo "![$n]($n.png)"; echo
+            done
+          } > "$DIR/README.md"
+          git -C "$DIR" init -q -b screenshots
+          git -C "$DIR" add -A
+          git -C "$DIR" -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Screenshots from build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA:0:7})"
+          git -C "$DIR" push --force --quiet "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/screenshots
+          echo "Screenshots: https://github.com/${GITHUB_REPOSITORY}/tree/screenshots (${#shots[@]} pictures)" >> "$GITHUB_STEP_SUMMARY"
