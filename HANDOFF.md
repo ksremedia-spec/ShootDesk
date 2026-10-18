@@ -1,4 +1,4 @@
-# ShootDesk handoff — Saturday, Oct 17 2026
+# ShootDesk handoff — Saturday, Oct 17 2026 (updated 11 PM: first cloud build is green)
 
 ShootDesk is Kyle Silva's personal iPhone app (Horizon Home Media, real-estate photography) that replaces
 Aryeo Go, built for the iPhone Duo. Project: `~/Documents/ShootDesk`. Read `CLAUDE.md` for the rules and the
@@ -14,10 +14,13 @@ on a real phone". He hates fix loops.
 Until Oct 17 the app was built and checked screen by screen in the iPhone Duo simulator (Xcode 27.1, iOS 27.1),
 folded and open, light and dark. Nothing has run on a real phone yet; Kyle's Duo arrives around Oct 31.
 
-On Oct 17 a batch of changes was written WITHOUT a Mac available, so it has never been compiled. They are
-already in this repository (committed Oct 17, 2026, "unbuilt").
+On Oct 17 a batch of changes was written WITHOUT a Mac available. That night they compiled for the first time,
+on GitHub's cloud Mac (Actions runs #1 and #2 both green; full log of #2, commit af08ecf, read line by line:
+BUILD SUCCEEDED, every source file of the app and the widget compiled, no errors, one warning, see below).
+Compiling proves the code is valid against Apple's iOS 27.1 SDK, nothing more. None of these changes has been
+SEEN RUNNING yet, in any simulator or on a phone: call them "compiles on GitHub, not seen running".
 
-## Unbuilt changes (Oct 17) — what each one is for
+## Oct 17 changes (compile on GitHub, not seen running): what each one is for
 
 1. The folded Listings tab looked broken. Diagnosed from a saved simulator screenshot: on the folded Duo, iOS 27 draws the tab bar as a vertical pill down the right edge and
    counts the strip under it as safe area. Horizontal scrollers ignore the safe area along the way they scroll,
@@ -38,8 +41,9 @@ already in this repository (committed Oct 17, 2026, "unbuilt").
    iOS 27.1 `onHingeChange` / `DeviceHinge.status == .partiallyOpen` / `reservedRegions(kind: .division)` APIs.
    The shoot page (`StopDetailView`) shows the photo or map above the fold and the details scrolling below it.
    THE API NAMES CAME FROM A THIRD-PARTY EXAMPLE REPO (github.com/artemnovichkov/iPhone-Duo-by-Examples), not
-   Apple docs. If they don't compile, jump to definition on `DeviceHinge` in the iOS 27.1 SDK and fix the names.
-   If the API doesn't exist, remove the laptop layout and tell Kyle plainly.
+   Apple docs. Verified Oct 17: they compile against Apple's iOS 27.1 SDK (they sit inside
+   `if #available(iOS 27.1, *)`, which the compiler still checks), so the names exist. Unknown: whether they
+   behave as expected. Only the Partially Open pose on the Mac (or the real phone) can show that.
 6. Widgets (`ShootDeskWidget/NextShootViews.swift`, `NextShootWidget.swift`): package name under the street on
    the small widget and on each "Coming up" row of the large widget; small widget's street is now one line so
    it doesn't overflow; large listed first in supported sizes (Kyle wants large as the default; iOS may still
@@ -50,18 +54,28 @@ already in this repository (committed Oct 17, 2026, "unbuilt").
 ## How building works now (Oct 17 2026): GitHub builds it
 
 Claude Code in the cloud runs on Linux and cannot compile or run an iOS app itself. Instead, every push to
-`main` runs `.github/workflows/build.yml` on one of GitHub's cloud Macs (the `xcode-27` image, Xcode 27.1).
-The loop from a phone is: edit → commit → push → open the repo's Actions tab → green check or red X.
+`main` runs `.github/workflows/build.yml` on one of GitHub's cloud Macs (the `xcode-27` image; its "Xcode 27.1"
+is the 27.1 Release Candidate, build 27A9275, per the run log). The loop from a phone is: edit → commit → push →
+open the repo's Actions tab → green check or red X.
 
-- A green check means the app COMPILES. It does not mean it looks right or works; that still needs eyes on
-  the simulator (Kyle's Mac) or the real phone. Say "compiles on GitHub", never "works".
-- On a red X: read the "Errors and warnings" step of that run (`gh run list` / `gh run view <id> --log-failed`
-  if `gh` is available; otherwise Kyle pastes the red lines). Fix, push, wait. Same error twice → stop and explain.
-- If the runner has an iPhone Duo simulator, the workflow also launches the app and saves a screenshot in the
-  run's artifacts (`build-output`). With no Aryeo key in the cloud it shows the Settings screen; that's expected.
-  Whether the Duo simulator exists on GitHub's image is unknown until the first run; the step is allowed to skip.
+- A green check means the app COMPILES (for the simulator, unsigned). It does not mean it looks right or works;
+  that still needs eyes on the simulator (Kyle's Mac) or the real phone. Say "compiles on GitHub", never "works".
+  A build for the real phone needs Kyle's signing, so it happens on his Mac.
+- On a red X: read the "Errors and warnings" step of that run. Claude Code in the cloud reads runs and job logs
+  itself through the GitHub connector; Kyle doesn't need to paste anything. Fix, push, wait. Same error twice →
+  stop and explain.
+- The workflow also tries to launch the app on an iPhone Duo simulator and save a screenshot in the run's
+  artifacts (`build-output`). Known since the first runs: GitHub's image has the iPhone Duo device but only the
+  iOS 27.0 simulator, and the Duo needs 27.1, so the step skips itself ("This runner's iOS runtime can't run the
+  iPhone Duo yet") and there's no screenshot. Assumed: it starts working by itself once GitHub's image gets the
+  iOS 27.1 simulator. (With no Aryeo key in the cloud the app would show its Settings screen; that's expected.)
+- Known warning, not an error: `App/Booking.swift:330`, Siri booking's `requestConfirmation(result:...)` is
+  deprecated (Apple suggests `requestConfirmation(conditions:actionName:dialog:)`). Deprecated still works. Left
+  alone on purpose: it's booking code and Siri booking hasn't been tried on a phone. Raise it, don't change it unasked.
 - GitHub's Mac minutes are free on a public repo. On a private repo they count 10x against the plan's free
   minutes (as far as I know: 2,000 min/month on the Free plan, so about 200 Mac-minutes, roughly 20–30 builds).
+  The repo IS public (checked Oct 17), so builds cost nothing; one takes about 2 minutes. Public also means anyone
+  can read the code and these notes. No keys are in the repo (checked Oct 17); keep it that way.
 
 ## Build and run on the Mac (needs Xcode 27.1)
 
@@ -89,7 +103,9 @@ press them while you take screenshots.
    the last card fully visible, not under the pill. Then: Today tab rails, an agent page rail (Customers), a
    shoot page's "This house before" rail and hourly forecast chips. Check the OPEN pose too (side column on
    the right). If the mask cuts too early or not at all, the ruler's `safeAreaInsets.trailing` reading is
-   wrong: print it and rethink before changing anything else.
+   wrong: print it and rethink before changing anything else. The one sideways scroller NOT on
+   `SideSafeScroller` is the filmstrip in the full-screen photo viewer (`GalleryViewer` in `PhotosCard.swift`);
+   it's a full-screen cover where the tab-bar pill isn't drawn, so assumed fine. Glance at it folded.
 2. Widgets: add Next Shoot small and large to the simulated Home Screen. Package line present; small doesn't
    overflow; note which size the picker opens on.
 3. Cover photo: shoot page → press and hold a grid photo → Use as cover photo → the Listings card and the hero
@@ -125,3 +141,8 @@ typing an address into Book a shoot (the simulator wouldn't take typing from aut
 - From the Oct 17 brainstorm, not picked: sun check for the front of the house, shot list per package, one-tap
   wrap-up text, house notes that come back, money per hour by package/town, quiet-agent nudges, owed-to-you
   list, assessor house facts, twilight slot suggestions. CarPlay stays v2. Kyle does not want the full-page widget.
+- Asked Kyle Oct 17, waiting on his answer: (a) the Next Shoot widget still offers the full-page size on iOS 27
+  (`.systemExtraLargePortrait` in `NextShootWidget.swift`, drawn with the large layout); remove it from the
+  picker? (b) a cloud "does it open" check: launch on a regular iPhone simulator (the runner has iOS 27.0) and
+  save a screenshot; proves only that the app starts. (c) swap the deprecated Siri confirm call once Siri
+  booking can be tried on the phone.
