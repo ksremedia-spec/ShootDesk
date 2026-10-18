@@ -57,9 +57,12 @@ jobs:
         run: |
           DT=$(xcrun simctl list devicetypes | grep -i "iPhone Duo" | head -1 | sed -E 's/.*\((com\.apple[^)]*)\).*/\1/')
           if [ -z "$DT" ]; then echo "No iPhone Duo simulator on this runner; skipping the launch check."; exit 0; fi
-          RT=$(xcrun simctl list runtimes | grep "iOS 27" | tail -1 | awk '{print $NF}')
+          echo "== iOS runtimes on this runner =="
+          xcrun simctl list runtimes | grep "iOS" || true
+          # The Duo needs iOS 27.1 or newer; take the newest iOS runtime available.
+          RT=$(xcrun simctl list runtimes | grep "^iOS" | awk '{print $NF}' | sort -t- -k2,2n -k3,3n | tail -1)
           echo "Device type: $DT  Runtime: $RT"
-          UDID=$(xcrun simctl create "Duo-CI" "$DT" "$RT")
+          UDID=$(xcrun simctl create "Duo-CI" "$DT" "$RT") || { echo "This runner's iOS runtime can't run the iPhone Duo yet; skipping the launch check."; exit 0; }
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
           APP=$(find build/Build/Products -name "ShootDesk.app" -maxdepth 2 | head -1)
