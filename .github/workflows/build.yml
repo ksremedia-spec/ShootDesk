@@ -1,7 +1,8 @@
 # Builds ShootDesk on one of GitHub's cloud Macs every time code is pushed.
-# Green check = the app compiles. Red X = open the run, read the "Errors and warnings" step.
-# If an iPhone Duo simulator exists on the runner it also launches the app and saves a screenshot
-# (the app will show its Settings screen, since there's no Aryeo key in the cloud).
+# Green check = the app compiles, and it opened on a simulator without crashing in its first 10 seconds.
+# Red X = open the run: the "Errors and warnings" step for compile errors, the "Open the app" step for a crash.
+# The run's summary page says which simulator the app opened on; the screenshot and the app's launch log are in
+# the build-output artifact, folder launch-check (the app shows its Settings screen: there's no Aryeo key in the cloud).
 name: Build ShootDesk
 
 on:
@@ -51,35 +52,70 @@ jobs:
           echo "== Warnings =="
           grep -E "warning:" build.log | sort -u | head -60 || echo "none"
 
-      - name: Launch on an iPhone Duo simulator and take a screenshot (only if the runner has one)
+      # Proves only that the app starts and is still running 10 seconds later; it can't prove anything looks right.
+      # Prefers the iPhone Duo. GitHub's image has the Duo device but (as of Oct 2026) only the iOS 27.0 simulator,
+      # which the Duo refuses, so until that changes the app opens on a regular iPhone that's already on the runner.
+      # Red only if the app crashed. No usable simulator = "skipped", not red.
+      - name: Open the app on a simulator and take a screenshot
         if: success()
-        continue-on-error: true
         run: |
-          DT=$(xcrun simctl list devicetypes | grep -i "iPhone Duo" | head -1 | sed -E 's/.*\((com\.apple[^)]*)\).*/\1/')
-          if [ -z "$DT" ]; then echo "No iPhone Duo simulator on this runner; skipping the launch check."; exit 0; fi
+          summary() { echo "$1"; echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
+          skip() { summary "Launch check skipped: $1."; exit 0; }
+          mkdir -p launch-check
+
           echo "== iOS runtimes on this runner =="
           xcrun simctl list runtimes | grep "iOS" || true
-          # The Duo needs iOS 27.1 or newer; take the newest iOS runtime available.
+          # Newest iOS runtime, e.g. com.apple.CoreSimulator.SimRuntime.iOS-27-1
           RT=$(xcrun simctl list runtimes | grep "^iOS" | awk '{print $NF}' | sort -t- -k2,2n -k3,3n | tail -1)
-          echo "Device type: $DT  Runtime: $RT"
-          UDID=$(xcrun simctl create "Duo-CI" "$DT" "$RT") || { echo "This runner's iOS runtime can't run the iPhone Duo yet; skipping the launch check."; exit 0; }
-          xcrun simctl boot "$UDID"
-          xcrun simctl bootstatus "$UDID" -b
-          APP=$(find build/Build/Products -name "ShootDesk.app" -maxdepth 2 | head -1)
-          xcrun simctl install "$UDID" "$APP"
-          xcrun simctl launch "$UDID" com.horizonhomemedia.shootdesk
-          sleep 10
-          mkdir -p screenshots
-          xcrun simctl io "$UDID" screenshot screenshots/launch.png
-          xcrun simctl shutdown "$UDID" || true
-          echo "Launched and captured screenshots/launch.png"
+          DT=$(xcrun simctl list devicetypes | grep -i "iPhone Duo" | head -1 | sed -E 's/.*\((com\.apple[^)]*)\).*/\1/')
 
-      - name: Save the build log and screenshots
+          UDID=""; DEVICE=""
+          if [ -n "$DT" ] && [ -n "$RT" ] && UDID=$(xcrun simctl create "Duo-CI" "$DT" "$RT"); then
+            DEVICE="iPhone Duo, $(echo "$RT" | sed -E 's/.*iOS-([0-9]+)-([0-9]+)$/iOS \1.\2/')"
+          else
+            echo "This runner's iOS can't run the iPhone Duo yet; opening on a regular iPhone instead."
+            # First iPhone already set up on the runner, with the iOS version header above it.
+            PICK=$(xcrun simctl list devices available | awk '/^-- iOS/{rt=$0} /^[[:space:]]+iPhone / && !/Duo/{print rt "|" $0; exit}')
+            [ -n "$PICK" ] || skip "no iPhone simulator on this runner"
+            LINE=${PICK#*|}
+            UDID=$(echo "$LINE" | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
+            NAME=$(echo "$LINE" | sed -E 's/^[[:space:]]+(.*) \([0-9A-Fa-f-]{36}\).*/\1/')
+            DEVICE="$NAME, $(echo "${PICK%%|*}" | sed -E 's/^-- (.*) --$/\1/')"
+          fi
+          echo "Simulator: $DEVICE ($UDID)"
+
+          xcrun simctl bootstatus "$UDID" -b || skip "the $DEVICE simulator wouldn't boot"
+          APP=$(find build/Build/Products -name "ShootDesk.app" -maxdepth 2 | head -1)
+          [ -n "$APP" ] || skip "couldn't find the built ShootDesk.app"
+          xcrun simctl install "$UDID" "$APP" || skip "couldn't install the app on the simulator"
+          # Say yes to location up front, so the screenshot isn't a permission box.
+          xcrun simctl privacy "$UDID" grant location com.horizonhomemedia.shootdesk || true
+          xcrun simctl launch "$UDID" com.horizonhomemedia.shootdesk || skip "the simulator refused to launch the app"
+          echo "Launched; waiting 10 seconds"
+          sleep 10
+
+          xcrun simctl io "$UDID" screenshot launch-check/launch.png || echo "Couldn't take the screenshot."
+          # What the app logged while opening (goes into the build-output artifact).
+          xcrun simctl spawn "$UDID" log show --last 2m --style compact --predicate 'process == "ShootDesk"' \
+            > launch-check/app-log.txt 2>&1 || true
+
+          if pgrep -x ShootDesk > /dev/null; then
+            summary "Launch check: the app opened on the $DEVICE simulator and was still running after 10 seconds. Screenshot: build-output artifact, launch-check/launch.png."
+            xcrun simctl shutdown "$UDID" || true
+          else
+            mkdir -p launch-check/crashes
+            cp ~/Library/Logs/DiagnosticReports/ShootDesk* launch-check/crashes/ 2>/dev/null || true
+            summary "Launch check FAILED: ShootDesk was not running 10 seconds after it was launched on the $DEVICE simulator, so it most likely crashed. See launch-check/app-log.txt and launch-check/crashes/ in the build-output artifact."
+            xcrun simctl shutdown "$UDID" || true
+            exit 1
+          fi
+
+      - name: Save the build log, screenshot and launch log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: build-output
           path: |
             build.log
-            screenshots/
+            launch-check/
           if-no-files-found: ignore
