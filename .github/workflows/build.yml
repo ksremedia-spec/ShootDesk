@@ -191,8 +191,14 @@ jobs:
         env:
           TOKEN: ${{ github.token }}
         run: |
-          shopt -s nullglob
-          shots=(launch-check/light-*.png launch-check/dark-*.png)
+          # In tab order, light then dark, so the page reads the way the app does.
+          shots=()
+          for look in light dark; do
+            for tab in today listings customers money ask settings; do
+              f="launch-check/$look-$tab.png"
+              [ -f "$f" ] && shots+=("$f")
+            done
+          done
           if [ ${#shots[@]} -eq 0 ]; then echo "No screenshots to publish."; exit 0; fi
           DIR=$(mktemp -d)
           cp "${shots[@]}" "$DIR/"
@@ -200,9 +206,10 @@ jobs:
             echo "# ShootDesk screenshots"
             echo
             echo "Taken by the cloud build on GitHub's Mac, on a regular iPhone simulator with no Aryeo key, so every tab shows its empty state."
+            echo "On a regular iPhone, iOS puts the 5th and 6th tabs (Ask, Settings) under More, hence the back arrow on those two."
             echo "Build ${GITHUB_RUN_NUMBER}, commit ${GITHUB_SHA:0:7}, $(date -u '+%Y-%m-%d %H:%M UTC'). Replaced on every push to main."
             echo
-            for f in "$DIR"/light-*.png "$DIR"/dark-*.png; do
+            for f in "${shots[@]}"; do
               n=$(basename "$f" .png)
               echo "## $n"; echo; echo "![$n]($n.png)"; echo
             done

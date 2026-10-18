@@ -77,11 +77,16 @@ open the repo's Actions tab → green check or red X.
   simulator, which the Duo refuses, so it opens on a regular iPhone already on the runner (the image has iPhone 17,
   17e, 18 Pro and Air; the summary line says which, and why it's not the Duo). Assumed: the Duo starts being used by
   itself once the image gets iOS 27.1. With no Aryeo key in the cloud every tab shows its empty state; on a regular
-  iPhone the 5th and 6th tabs may sit under a "More" tab, so Money, Ask and Settings may appear inside More.
+  iPhone iOS puts the 5th and 6th tabs under "More", so Ask and Settings show a back arrow at the top (seen Oct 17,
+  not an app bug; the Duo lays its tabs out differently).
   Red only if the app crashed (a launch the simulator refused and a crash report, or the process gone when checked);
   any simulator problem skips with a message instead. The boot wait is capped at 5 minutes for the same reason.
   Claude Code in the cloud can't download artifacts (network rule) but CAN read the screenshots branch through
   raw.githubusercontent.com, so it can look at the pictures and describe them.
+  First tour, Oct 17 (run #4): green on the iPhone 18 Pro, iOS 27.0 simulator; all 12 pictures looked right. A run now
+  takes about 12 minutes: 2 to compile, 1 to boot the simulator, then about 6 minutes of silence before the first
+  launch (the fresh simulator finishing its first-boot setup; verified from the timestamps, cause assumed), then
+  10 seconds per tab. Free on a public repo; nothing to fix.
 - Known warning, not an error: `App/Booking.swift:330`, Siri booking's `requestConfirmation(result:...)` is
   deprecated (Apple suggests `requestConfirmation(conditions:actionName:dialog:)`). Deprecated still works. Left
   alone on purpose: it's booking code and Siri booking hasn't been tried on a phone. Raise it, don't change it unasked.
@@ -114,6 +119,8 @@ press them while you take screenshots.
 
 0. No Mac needed: open github.com/ksremedia-spec/ShootDesk/tree/screenshots after a green build. Twelve pictures,
    every tab light and dark, on a regular iPhone with no key: empty states only. Proves the app opens; nothing else.
+   Done Oct 17 for run #4: Today/Listings/Customers show "Connect Aryeo", Money "Connect Stripe", Ask its six
+   suggested questions with the orange "add your Claude key" line, Settings the empty key rows. Light and dark both fine.
 1. FOLDED Listings tab: the Upcoming rail must stop at the vertical tab-bar pill. Scroll the rail to its end:
    the last card fully visible, not under the pill. Then: Today tab rails, an agent page rail (Customers), a
    shoot page's "This house before" rail and hourly forecast chips. Check the OPEN pose too (side column on
