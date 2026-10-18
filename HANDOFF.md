@@ -47,11 +47,23 @@ already in this repository (committed Oct 17, 2026, "unbuilt").
 7. Photo cache raised to 2 GB on disk (`App/ShootDeskApp.swift`). Kyle's call.
 8. `CLAUDE.md` gained the rules for `SideSafeScroller` and the fold helpers.
 
-## Build and run from the terminal (needs a Mac with Xcode 27.1)
+## How building works now (Oct 17 2026): GitHub builds it
 
-Claude Code in the cloud runs on Linux and CANNOT compile or run an iOS app: no Xcode, no simulator.
-From the cloud you can read, review and write code and push it; the build and the verify list below need
-Kyle's Mac. Say so plainly rather than pretending to have built anything.
+Claude Code in the cloud runs on Linux and cannot compile or run an iOS app itself. Instead, every push to
+`main` runs `.github/workflows/build.yml` on one of GitHub's cloud Macs (the `xcode-27` image, Xcode 27.1).
+The loop from a phone is: edit → commit → push → open the repo's Actions tab → green check or red X.
+
+- A green check means the app COMPILES. It does not mean it looks right or works; that still needs eyes on
+  the simulator (Kyle's Mac) or the real phone. Say "compiles on GitHub", never "works".
+- On a red X: read the "Errors and warnings" step of that run (`gh run list` / `gh run view <id> --log-failed`
+  if `gh` is available; otherwise Kyle pastes the red lines). Fix, push, wait. Same error twice → stop and explain.
+- If the runner has an iPhone Duo simulator, the workflow also launches the app and saves a screenshot in the
+  run's artifacts (`build-output`). With no Aryeo key in the cloud it shows the Settings screen; that's expected.
+  Whether the Duo simulator exists on GitHub's image is unknown until the first run; the step is allowed to skip.
+- GitHub's Mac minutes are free on a public repo. On a private repo they count 10x against the plan's free
+  minutes (as far as I know: 2,000 min/month on the Free plan, so about 200 Mac-minutes, roughly 20–30 builds).
+
+## Build and run on the Mac (needs Xcode 27.1)
 
 The Xcode project file isn't committed (see .gitignore); `project.yml` is the recipe. On a fresh clone, or whenever
 source files are added or removed, run `xcodegen` in the project folder first (`brew install xcodegen` once).

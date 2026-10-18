@@ -1,0 +1,82 @@
+# Builds ShootDesk on one of GitHub's cloud Macs every time code is pushed.
+# Green check = the app compiles. Red X = open the run, read the "Errors and warnings" step.
+# If an iPhone Duo simulator exists on the runner it also launches the app and saves a screenshot
+# (the app will show its Settings screen, since there's no Aryeo key in the cloud).
+name: Build ShootDesk
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Compile for the iPhone simulator
+    runs-on: xcode-27            # GitHub's macOS 27 image with Xcode 27.1 (Apple Silicon)
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Xcode 27.1
+        run: |
+          ls /Applications | grep -i xcode
+          sudo xcode-select -s /Applications/Xcode_27.1.app
+          xcodebuild -version
+
+      - name: Install XcodeGen (makes ShootDesk.xcodeproj from project.yml)
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        run: xcodegen generate
+
+      - name: Build for the simulator (no signing needed)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project ShootDesk.xcodeproj \
+            -scheme ShootDesk \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            | tee build.log
+
+      - name: Errors and warnings
+        if: always()
+        run: |
+          echo "== Errors =="
+          grep -E "error:" build.log | sort -u || echo "none"
+          echo
+          echo "== Warnings =="
+          grep -E "warning:" build.log | sort -u | head -60 || echo "none"
+
+      - name: Launch on an iPhone Duo simulator and take a screenshot (only if the runner has one)
+        if: success()
+        continue-on-error: true
+        run: |
+          DT=$(xcrun simctl list devicetypes | grep -i "iPhone Duo" | head -1 | sed -E 's/.*\((com\.apple[^)]*)\).*/\1/')
+          if [ -z "$DT" ]; then echo "No iPhone Duo simulator on this runner; skipping the launch check."; exit 0; fi
+          RT=$(xcrun simctl list runtimes | grep "iOS 27" | tail -1 | awk '{print $NF}')
+          echo "Device type: $DT  Runtime: $RT"
+          UDID=$(xcrun simctl create "Duo-CI" "$DT" "$RT")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          APP=$(find build/Build/Products -name "ShootDesk.app" -maxdepth 2 | head -1)
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" com.horizonhomemedia.shootdesk
+          sleep 10
+          mkdir -p screenshots
+          xcrun simctl io "$UDID" screenshot screenshots/launch.png
+          xcrun simctl shutdown "$UDID" || true
+          echo "Launched and captured screenshots/launch.png"
+
+      - name: Save the build log and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            build.log
+            screenshots/
+          if-no-files-found: ignore
