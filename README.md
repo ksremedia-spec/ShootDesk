@@ -41,6 +41,10 @@ It reads live from Aryeo and Stripe. It only writes to Aryeo in one place: booki
 - **Claude** (Ask, Listing kit, drafted texts): platform.claude.com.
 - **Stripe** (Money): a *restricted* key with Read on Balance, Balance transactions and Payouts. It can't move money.
 
+## Demo
+
+`Demo/ShootDeskDuoDemo.html` is a clickable HTML replica of the app inside a drawn iPhone Duo (closed, half-open and open, light and dark) on made-up data, for showing people what ShootDesk does without a phone. It is not the app and talks to nothing.
+
 ## Building
 
 Open `ShootDesk.xcodeproj` in Xcode 27.1, pick the iPhone Duo (simulator or your phone) and press Run. If you add files, run `xcodegen` first. `CLAUDE.md` has the details for Claude Code.

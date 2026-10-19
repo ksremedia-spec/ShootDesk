@@ -1,0 +1,785 @@
+<title>ShootDesk on iPhone Duo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700&display=swap">
+<style>
+/* Layout: a quiet stage page holding one drawn iPhone Duo; the app inside has its own iOS-style tokens. */
+:root{
+  --bg:#f4f5f7; --fg:#15181d; --muted:#5d6570; --line:#d9dde3; --panel:#ffffff; --accent:#3d9bea;
+  --stage:#e9ecf0;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#121417; --fg:#e8eaee; --muted:#9aa3ad; --line:#2a2f36; --panel:#1b1f24; --accent:#4ea4ec; --stage:#0c0e11; color-scheme:dark } }
+:root[data-theme="dark"]{ --bg:#121417; --fg:#e8eaee; --muted:#9aa3ad; --line:#2a2f36; --panel:#1b1f24; --accent:#4ea4ec; --stage:#0c0e11; color-scheme:dark }
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;min-height:100%}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding-block:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line);background:var(--panel)}
+.top h1{font:600 16px/1.2 "Source Serif 4",Georgia,serif;margin:0 6px 0 0;text-wrap:balance}
+.top .note{color:var(--muted);font-size:12.5px;flex:1 1 220px;min-width:0}
+.seg{display:inline-flex;background:var(--stage);border:1px solid var(--line);border-radius:9px;padding:2px;gap:2px}
+.seg button{border:0;background:transparent;color:var(--fg);font:500 13px/1 inherit;padding:7px 11px;border-radius:7px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--panel);box-shadow:0 1px 2px rgba(0,0,0,.18)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;background:var(--stage);padding-block:18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow:hidden;min-height:420px}
+.scaler{position:relative}
+.device{position:absolute;left:0;top:0;transform-origin:top left;border-radius:54px;background:linear-gradient(135deg,#3a3d42,#1c1e22 55%,#2a2d32);box-shadow:0 30px 60px rgba(0,0,0,.35),inset 0 0 0 2px rgba(255,255,255,.08);padding:14px}
+.device.open{border-radius:38px}
+.device.half{border-radius:40px}
+.screen{position:relative;overflow:hidden;background:#000;border-radius:40px}
+.device.open .screen{border-radius:26px}
+.device.half .screen{border-radius:26px}
+.crease{position:absolute;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:linear-gradient(90deg,rgba(0,0,0,.18),rgba(255,255,255,.08),rgba(0,0,0,.18));pointer-events:none;z-index:50}
+.hinge{position:absolute;left:0;right:0;z-index:60;background:linear-gradient(180deg,#0e1013,#2a2e34 45%,#15181c);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(0,0,0,.6);pointer-events:none}
+.caption{padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);background:var(--panel)}
+.caption b{color:var(--fg);font-weight:600}
+
+/* ===== The app: iOS-style tokens, scoped to the screen ===== */
+.app{--bgc:#ffffff;--surface:#f2f2f7;--fill:rgba(120,120,128,.16);--fill2:rgba(120,120,128,.12);--label:#000000;--sec:rgba(60,60,67,.6);--ter:rgba(60,60,67,.3);--sep:rgba(60,60,67,.24);--group:#f2f2f7;--cell:#ffffff;--acc:#3d9bea;--green:#34c759;--orange:#ff9500;--red:#ff3b30;--cyan:#32ade6;--gray:#8e8e93;--glass:rgba(255,255,255,.72);--barbg:rgba(255,255,255,.85);--chart2:#d08c2e;
+  position:absolute;inset:0;background:var(--bgc);color:var(--label);font:15px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
+.app.dark{--bgc:#000000;--surface:#1c1c1e;--fill:rgba(120,120,128,.32);--fill2:rgba(120,120,128,.22);--label:#ffffff;--sec:rgba(235,235,245,.6);--ter:rgba(235,235,245,.3);--sep:rgba(84,84,88,.6);--group:#000000;--cell:#1c1c1e;--acc:#3d9bea;--green:#30d158;--orange:#ff9f0a;--red:#ff453a;--cyan:#64d2ff;--gray:#8e8e93;--glass:rgba(40,40,44,.72);--barbg:rgba(0,0,0,.85);--chart2:#c4812a;color-scheme:dark}
+.app.dark{--acc:#3794e6}
+.app *{box-sizing:border-box}
+:where(.app button){font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:left}
+.app button:focus-visible,.app .tab:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.serif{font-family:"Source Serif 4",Georgia,"Times New Roman",serif;font-weight:600}
+.tnum{font-variant-numeric:tabular-nums}
+.sec{color:var(--sec)} .ter{color:var(--ter)} .acc{color:var(--acc)} .orange{color:var(--orange)} .green{color:var(--green)} .red{color:var(--red)} .cyan{color:var(--cyan)}
+.cap{font-size:12px} .cap2{font-size:11px} .fn{font-size:13px} .sub{font-size:14px} .head{font-size:17px;font-weight:600} .t3{font-size:20px;font-weight:700} .t2{font-size:22px}
+.pressable{transition:transform .18s cubic-bezier(.2,.8,.2,1),opacity .18s} .pressable:active{transform:scale(.97);opacity:.9}
+.ic{width:1em;height:1em;display:inline-block;vertical-align:-.15em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.f{fill:currentColor;stroke:none}
+
+/* status bar + tab pill + page frame */
+.status{position:absolute;left:0;right:0;top:0;height:50px;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:12px 30px 0;font-weight:600;font-size:15px;pointer-events:none}
+.status.onphoto{color:#fff}
+.status .right{display:flex;gap:6px;align-items:center}
+.batt{width:25px;height:12px;border:1.5px solid currentColor;border-radius:4px;position:relative;opacity:.9}.batt::after{content:"";position:absolute;inset:2px 3px 2px 2px;background:currentColor;border-radius:1.5px}
+.page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-top:0}
+.page::-webkit-scrollbar{display:none}
+.page.plain{padding-top:50px}
+.pill{position:absolute;z-index:45;display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--glass);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);border-radius:999px;box-shadow:0 6px 24px rgba(0,0,0,.18),inset 0 0 0 1px rgba(255,255,255,.35);right:12px;top:50%;transform:translateY(-50%)}
+.app.dark .pill{box-shadow:0 6px 24px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.08)}
+.tab{width:48px;height:48px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--label);font-size:10px;font-weight:600;position:relative}
+.tab .ic{width:22px;height:22px}
+.tab[aria-current="page"]{background:var(--fill);color:var(--acc)}
+.tab .badge{position:absolute;top:4px;right:4px;background:var(--red);color:#fff;font-size:10px;line-height:16px;min-width:16px;height:16px;border-radius:8px;text-align:center;padding:0 4px}
+.app.wide .pill{right:16px;padding:10px 8px}
+.app.wide .tab{width:62px;height:56px}
+.app.wide .tab span{display:block}
+.app:not(.wide) .tab span{display:none}
+.slimbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:center;background:var(--bgc);font-weight:600;font-size:17px;padding-top:50px;box-sizing:content-box;height:44px}
+.slimbar.grouped{background:var(--group)}
+.slimbar .back{position:absolute;left:8px;bottom:4px;height:36px;display:flex;align-items:center;gap:2px;color:var(--acc);font-weight:400;font-size:17px;padding:0 8px}
+.slimbar .trail{position:absolute;right:14px;bottom:8px;display:flex;gap:12px;color:var(--acc)}
+.backfloat{position:absolute;z-index:46;left:14px;top:56px;width:40px;height:40px;border-radius:50%;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;color:var(--label);box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.content{padding:8px var(--gut) 100px;display:flex;flex-direction:column;gap:30px}
+.app{--gut:18px}.app.wide{--gut:28px}
+.gut{padding-left:var(--gut);padding-right:var(--gut)}
+.searchf{display:flex;align-items:center;gap:8px;background:var(--fill2);border-radius:12px;padding:9px 12px;color:var(--sec);font-size:16px;margin:0 var(--gut) 12px}
+.searchf input{flex:1;border:0;background:transparent;font:inherit;color:var(--label);outline:0;min-width:0}
+.segc{display:flex;background:var(--fill2);border-radius:9px;padding:2px;gap:2px}
+.segc button{flex:1;text-align:center;padding:6px 8px;border-radius:7px;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px}
+.segc button[aria-pressed="true"]{background:var(--cell);box-shadow:0 1px 3px rgba(0,0,0,.14);font-weight:600}
+.app.dark .segc button[aria-pressed="true"]{background:#636366}
+.primary{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 12px;border-radius:999px;background:var(--acc);color:#fff;font-size:17px;font-weight:600;width:100%;white-space:nowrap}
+.primary.quiet{background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc)}
+.primary[disabled]{opacity:.45;cursor:default}
+.card{background:var(--surface);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card h4{margin:0;font-size:17px;font-weight:600}
+.irow{display:flex;justify-content:space-between;gap:12px;font-size:14px;align-items:baseline}
+.irow .l{color:var(--sec)} .irow .v{text-align:right}
+.divider{height:1px;background:var(--sep)}
+.sechead{display:flex;align-items:baseline;gap:8px}
+.sechead .t{font-size:20px;font-weight:700}.sechead .n{font-size:14px;color:var(--sec)}
+.rail{display:flex;flex-direction:column;gap:12px}
+.rail .strip{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;padding:0 var(--gut);scroll-snap-type:x mandatory;scroll-padding-left:var(--gut)}
+.rail .strip::-webkit-scrollbar{display:none}
+.rail .strip>*{scroll-snap-align:start;flex:none}
+.app .masked{margin-right:0}
+.app:not(.wide) .rail .strip{padding-right:84px}
+.app.wide .rail .strip{padding-right:100px}
+.shoot{display:flex;flex-direction:column;gap:9px;width:100%}
+.shoot .art{position:relative;aspect-ratio:16/10;border-radius:16px;overflow:hidden;background:var(--fill)}
+.shoot .art img,.hero img,.art canvas{width:100%;height:100%;object-fit:cover;display:block}
+.shoot .street{font-size:17px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
+.shoot .line2{font-size:14px;color:var(--sec);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
+.shoot .line2 .ag{color:var(--ter)}
+.shoot .flag{color:var(--orange);font-weight:500;display:flex;gap:5px;align-items:center}
+.timepill{position:absolute;top:8px;right:8px;background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:999px;padding:4px 8px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.dateart{position:absolute;inset:0;background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 85%,transparent),color-mix(in srgb,var(--acc) 35%,transparent));color:#fff;display:flex;flex-direction:column;justify-content:flex-end;padding:14px}
+.dateart .d{font-size:46px;line-height:1}
+.dateart .w{font-size:14px;font-weight:600}.dateart .m{font-size:12px;font-weight:500;opacity:.85}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:var(--surface);font-size:14px}
+.chip .cnt{color:var(--sec);font-variant-numeric:tabular-nums}
+.mono{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:600;flex:none;font-family:ui-rounded,-apple-system,"SF Pro Rounded",system-ui,sans-serif}
+.statuschip{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.grid{display:grid;gap:22px 14px;align-items:start}
+.row{display:flex;align-items:center;gap:12px}
+.circ{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--fill);color:var(--label)}
+.circ.acc{background:var(--acc);color:#fff}
+.circ .ic{width:20px;height:20px}
+.hero{position:relative;border-radius:26px;overflow:hidden;background:var(--fill);color:#fff}
+.hero .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 35%,rgba(0,0,0,.78) 100%)}
+.hero .txt{position:absolute;left:0;right:0;bottom:0;padding:22px;display:flex;flex-direction:column;gap:5px}
+.hero .street{font-size:25px;line-height:1.15}
+.app.wide .hero .street{font-size:30px}
+.warnbar{display:flex;align-items:center;gap:8px;background:color-mix(in srgb,var(--orange) 12%,transparent);color:var(--orange);border-radius:14px;padding:11px 14px;font-size:14px;font-weight:500;width:100%}
+.warnbar .chev{margin-left:auto;opacity:.6}
+.actions{display:flex;gap:10px}
+.actions button{flex:1;min-height:58px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:600;background:color-mix(in srgb,var(--acc) 13%,transparent);color:var(--acc)}
+.actions button.prom{background:var(--acc);color:#fff}
+.actions .ic{width:18px;height:18px}
+.list-row{display:flex;align-items:center;gap:12px;padding:8px 0}
+.grouped{background:var(--group)}
+.form{display:flex;flex-direction:column;gap:22px;padding:8px 16px 110px}
+.gsec{display:flex;flex-direction:column;gap:6px}
+.gsec .gh{font-size:13px;color:var(--sec);padding:0 16px;text-transform:uppercase;letter-spacing:.02em}
+.gsec .gf{font-size:13px;color:var(--sec);padding:0 16px;line-height:1.35}
+.gcard{background:var(--cell);border-radius:12px;overflow:hidden}
+.grow{display:flex;align-items:center;gap:12px;min-height:44px;padding:9px 16px;font-size:16px}
+.grow+.grow{border-top:1px solid var(--sep)}
+.grow .v{margin-left:auto;color:var(--sec)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ter);margin-left:auto;flex:none}.dot.on{background:var(--green)}
+.toggle{margin-left:auto;width:51px;height:31px;border-radius:16px;background:var(--green);position:relative;flex:none}.toggle::after{content:"";position:absolute;top:2px;right:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.25)}
+.bubble{align-self:flex-end;max-width:85%;background:var(--acc);color:#fff;padding:10px 14px;border-radius:18px;font-size:16px}
+.answer{font-size:16px;line-height:1.5;white-space:pre-wrap}
+.inputbar{position:absolute;left:12px;right:12px;bottom:10px;z-index:35;display:flex;align-items:center;gap:8px;padding:6px 6px 6px 16px;border-radius:999px;background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 4px 18px rgba(0,0,0,.14)}
+.inputbar input{flex:1;border:0;background:transparent;font:inherit;font-size:16px;color:var(--label);outline:0;min-width:0}
+.inputbar .send{width:36px;height:36px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center}
+.inputbar .send[disabled]{opacity:.4}
+.app:not(.wide) .inputbar{right:84px}
+.app.wide .inputbar{right:104px}
+.sheet{position:absolute;inset:0;z-index:70;display:flex;align-items:flex-end;background:rgba(0,0,0,.35)}
+.sheet .panel{position:relative;background:var(--bgc);border-radius:22px 22px 0 0;height:92%;width:100%;overflow:hidden}
+.app.wide .sheet{align-items:stretch}.app.wide .sheet .panel{height:100%;border-radius:0}
+.sheet .page{padding-top:0}
+.sheet .slimbar{margin-top:0;padding-top:0;height:44px}
+.photogrid{display:grid;gap:4px}
+.photogrid .ph{position:relative;aspect-ratio:4/3;border-radius:6px;overflow:hidden;background:var(--fill)}
+.photogrid .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.cover{position:absolute;left:5px;bottom:5px;background:var(--glass);backdrop-filter:blur(8px);border-radius:999px;padding:3px 7px;font-size:11px;font-weight:600;color:var(--label)}
+.menu{position:absolute;z-index:80;background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);min-width:220px;overflow:hidden}
+.menu button{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 16px;font-size:16px;color:var(--label)}
+.menu button+button{border-top:1px solid var(--sep)}
+.gallery{position:absolute;inset:0;z-index:90;background:#000;color:#fff;display:flex;flex-direction:column}
+.gallery .stage{flex:1;display:flex;align-items:center;justify-content:center;background:#000;padding:0;min-height:0}
+.gallery .stage img{max-width:100%;max-height:100%;object-fit:contain}
+.gallery .bar{position:absolute;left:0;right:0;top:0;padding:56px 16px 24px;display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,rgba(0,0,0,.6),rgba(0,0,0,0))}
+.gallery .bar .cb{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.18);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;color:#fff}
+.gallery .bar .mid{flex:1;text-align:center;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.gallery .strip{position:absolute;left:0;right:0;bottom:0;padding:24px 16px 10px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;background:linear-gradient(0deg,rgba(0,0,0,.6),rgba(0,0,0,0))}
+.gallery .strip img{width:66px;height:44px;object-fit:cover;border-radius:6px;opacity:.6;flex:none}.gallery .strip img.cur{opacity:1;outline:2px solid #fff}
+.covercard{position:absolute;left:0;right:0;bottom:0;padding:80px 28px 40px;background:linear-gradient(0deg,rgba(0,0,0,.7),rgba(0,0,0,0))}
+.covercard .st{font-size:38px;line-height:1.1}.covercard .sb{font-size:20px;opacity:.85;margin-top:6px}.covercard .cr{font-size:13px;opacity:.65;margin-top:10px;font-weight:500}
+.timeline{position:relative;height:30px;border-radius:999px;background:var(--surface);overflow:hidden}
+.timeline i{position:absolute;top:0;bottom:0;display:block}
+.timeline .free{background:color-mix(in srgb,var(--green) 28%,transparent);border-radius:6px}
+.timeline .pad{background:color-mix(in srgb,var(--gray) 18%,transparent)}
+.timeline .busy{background:color-mix(in srgb,var(--gray) 55%,transparent);border-radius:4px}
+.timeline .now{width:2px;background:var(--red)}
+.tlcap{display:flex;justify-content:space-between;font-size:11px;color:var(--sec);margin-top:6px}
+.flow{display:flex;flex-wrap:wrap;gap:8px}
+.tchip{padding:9px 14px;border-radius:999px;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;background:color-mix(in srgb,var(--acc) 13%,transparent);color:var(--acc)}
+.tchip[aria-pressed="true"]{background:var(--acc);color:#fff}
+.daychip{width:50px;height:60px;border-radius:14px;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:none}
+.daychip[aria-pressed="true"]{background:var(--acc);color:#fff}
+.daychip .d{font-size:20px}.daychip .w{font-size:12px;font-weight:600}
+.step{display:flex;align-items:center;gap:10px}
+.step .num{width:26px;height:26px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--sec)}
+.step .num.done{background:var(--acc);color:#fff}
+.field{display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:14px;padding:12px 14px;color:var(--sec);font-size:16px}
+.field input{flex:1;border:0;background:transparent;font:inherit;color:var(--label);outline:0;min-width:0}
+.offer{position:absolute;left:12px;right:12px;bottom:8px;z-index:36;background:var(--bgc);border-radius:24px;padding:16px;box-shadow:0 2px 14px rgba(0,0,0,.15);display:flex;flex-direction:column;gap:10px}
+.app:not(.wide) .offer{right:84px}.app.wide .offer{left:28px;right:104px;max-width:760px}
+.bars{display:flex;align-items:flex-end;gap:2px;height:100%}
+.weekstrip{display:flex;align-items:center}
+.weekstrip .day{flex:1;min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.weekstrip .day .n{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px}
+.weekstrip .day .n.sel{background:var(--acc);color:#fff;font-weight:700}
+.weekstrip .day .dotp{width:5px;height:5px;border-radius:50%;background:color-mix(in srgb,var(--acc) 80%,transparent)}
+.mapbox{position:relative;overflow:hidden;background:#e8ecdf}
+.app.dark .mapbox{background:#1f2a24}
+.pin{position:absolute;width:32px;height:32px;border-radius:50%;background:var(--acc);border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;color:#fff;transform:translate(-50%,-50%)}
+.pin .ic{width:16px;height:16px}
+.bub{position:absolute;border-radius:50%;background:var(--acc);border:2.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.25);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);font-variant-numeric:tabular-nums;font-family:ui-rounded,-apple-system,system-ui,sans-serif}
+.bub.sel{background:var(--orange);transform:translate(-50%,-50%) scale(1.12)}
+.fade-in{animation:fi .25s ease-out}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){.fade-in{animation:none}.pressable{transition:none}}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:40px 30px;color:var(--sec);min-height:60%}
+.empty .ic{width:48px;height:48px;color:var(--gray)}
+.empty b{color:var(--label);font-size:22px;font-weight:700}
+</style>
+<style>
+.app{--pillw:78px}.app.wide{--pillw:98px}
+.app .page{padding-right:var(--pillw)}
+.app .rail .strip{padding-right:var(--gut)}
+.app .asksplit{padding-right:var(--pillw)}
+.app .asksplit .inputbar{left:12px;right:12px}
+.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:95;background:rgba(30,30,34,.92);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;max-width:80%;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.3);animation:fi .2s}
+.spin{width:16px;height:16px;border:2px solid var(--sep);border-top-color:var(--sec);border-radius:50%;animation:sp .8s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.cmask{position:absolute;inset:0;z-index:79}
+</style>
+<div class="top">
+  <h1>ShootDesk on iPhone Duo</h1>
+  <div class="seg" role="group" aria-label="Pose"><button data-pose="closed" aria-pressed="true">Closed</button><button data-pose="half" aria-pressed="false">Half-open</button><button data-pose="open" aria-pressed="false">Open</button></div>
+  <div class="seg" role="group" aria-label="App look"><button data-look="system" aria-pressed="true">Match page</button><button data-look="light" aria-pressed="false">Light</button><button data-look="dark" aria-pressed="false">Dark</button></div>
+  <div class="note">A working replica of the app in HTML. Every tab, card and button here does what the real one does, on made-up shoots, agents and money. Nothing is real and nothing is sent anywhere.</div>
+</div>
+<div class="stage" id="stage"><div class="scaler" id="scaler"><div class="device" id="device"><div class="screen" id="screen"><div class="app" id="app"></div></div></div></div></div>
+<div class="caption"><b>Closed</b> is the outer screen, one column. <b>Open</b> is the inner screen: the same pages with more room, two columns where it helps. <b>Half-open</b> is the laptop pose: open a shoot and the photo sits above the fold, the details below. Try: tap the big photo on Today, press and hold a photo on the shoot page, or Ask a suggested question.</div>
+<script>
+/* ===== helpers ===== */
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function rng(seed){ let a = seed>>>0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const DAY = 86400000, HOUR = 3600000, MIN = 60000;
+const now = () => new Date();
+const startOfDay = d => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+const addDays = (d, n) => new Date(d.getTime() + n*DAY);
+const at = (d, h, m=0) => { const x = startOfDay(d); x.setHours(h, m, 0, 0); return x; };
+const sameDay = (a, b) => a && b && startOfDay(a).getTime() === startOfDay(b).getTime();
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function fmt(d, p){
+  if (!d) return '';
+  const h12 = d.getHours()%12||12, mm = String(d.getMinutes()).padStart(2,'0'), ap = d.getHours()<12?'AM':'PM';
+  return p.replace(/EEEEE|EEEE|EEE|MMMM|MMM|yyyy|yy|h:mm a|h a|h:mm|d\b|a\b/g, t => ({
+    EEEEE: DAYS[d.getDay()][0], EEEE: DAYS[d.getDay()], EEE: DAYS[d.getDay()].slice(0,3), MMMM: MONTHS[d.getMonth()], MMM: MONTHS[d.getMonth()].slice(0,3),
+    yyyy: String(d.getFullYear()), yy: String(d.getFullYear()).slice(2), 'h:mm a': `${h12}:${mm} ${ap}`, 'h a': `${h12} ${ap}`, 'h:mm': `${h12}:${mm}`, d: String(d.getDate()), a: ap
+  })[t]);
+}
+const clockAMPM = d => fmt(d, 'h:mm a');
+const shortT = d => d.getMinutes()===0 ? fmt(d,'h a') : fmt(d,'h:mm a');
+const timeRange = (s, e) => !s ? 'Not scheduled' : !e ? clockAMPM(s) : `${fmt(s,'h:mm')} – ${fmt(e,'h:mm a')}`;
+function durLabel(m){ if (m < 60) return `${m} min`; const h = Math.floor(m/60), r = m%60; return r ? `${h} h ${r} m` : `${h} h`; }
+function driveLabel(m){ return m < 60 ? `${m} min drive` : `${Math.floor(m/60)} hr ${m%60} min drive`; }
+function money(c){ const neg = c < 0; c = Math.abs(c); const d = Math.floor(c/100), r = c%100; const s = '$' + d.toLocaleString('en-US') + (r ? '.' + String(r).padStart(2,'0') : ''); return neg ? '-' + s : s; }
+const whole = c => money(Math.trunc(c/100)*100);
+const relTime = d => { const m = Math.round((Date.now()-d)/MIN); return m < 1 ? 'now' : m < 60 ? `${m} minute${m===1?'':'s'} ago` : m < 1440 ? `${Math.round(m/60)} hour${Math.round(m/60)===1?'':'s'} ago` : 'yesterday'; };
+function initials(name){ return name.split(/\s+/).slice(0,2).map(w => w[0]).join('').toUpperCase(); }
+const TINTS = ['#007aff','#30b0c7','#5856d6','#af52de','#ff2d55','#ff9500','#34c759','#32ade6'];
+function tint(name){ let h = 0; for (const ch of name) h = (h*31 + ch.codePointAt(0)) & 0x7fffffff; return TINTS[h % 8]; }
+function mono(name, size){ const t = tint(name); return `<span class="mono" style="width:${size}px;height:${size}px;font-size:${Math.round(size*.38)}px;color:${t};background:color-mix(in srgb,${t} 16%,transparent)">${esc(initials(name))}</span>`; }
+function phonePretty(p){ const d = p.replace(/\D/g,'').replace(/^1(?=\d{10}$)/,''); return d.length===10 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : p; }
+// Sunset (NOAA-style approximation). zenith 90.833 = sunset, 84 = golden light, 96 = civil dusk.
+function sunTime(date, lat, lon, zenith){
+  const rad = Math.PI/180, d0 = startOfDay(date), N = Math.floor((d0 - new Date(d0.getFullYear(),0,0))/DAY);
+  const lngH = lon/15, t = N + ((18 - lngH)/24), M = (0.9856*t) - 3.289;
+  let L = M + (1.916*Math.sin(M*rad)) + (0.020*Math.sin(2*M*rad)) + 282.634; L = (L+360)%360;
+  let RA = Math.atan(0.91764*Math.tan(L*rad))/rad; RA = (RA+360)%360;
+  RA = (RA + (Math.floor(L/90)*90 - Math.floor(RA/90)*90))/15;
+  const sinDec = 0.39782*Math.sin(L*rad), cosDec = Math.cos(Math.asin(sinDec));
+  const cosH = (Math.cos(zenith*rad) - (sinDec*Math.sin(lat*rad)))/(cosDec*Math.cos(lat*rad));
+  if (cosH < -1 || cosH > 1) return null;
+  const H = (Math.acos(cosH)/rad)/15, T = H + RA - (0.06571*t) - 6.622;
+  const UT = ((T - lngH)%24 + 24)%24;
+  const r = new Date(Date.UTC(d0.getFullYear(), d0.getMonth(), d0.getDate())); r.setTime(r.getTime() + UT*HOUR);
+  return r;
+}
+const HOME = {lat: 41.64, lon: -70.95};
+const sunset = (d, lat=HOME.lat, lon=HOME.lon) => sunTime(d, lat, lon, 90.833) || at(d, 18);
+
+/* ===== icons (simple strokes, 24 grid) ===== */
+const I = {
+  sun: '<path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/><circle cx="12" cy="12" r="4"/>',
+  sunh: '<path d="M4 18h16M6 14a6 6 0 0 1 12 0M12 4v2M4.9 8.9l1.4 1.4M19.1 8.9l-1.4 1.4"/>',
+  photos: '<rect x="4" y="7" width="16" height="13" rx="2"/><path d="M7 4h10M4 15l4-4 4 4 3-3 5 5"/><circle cx="15" cy="11" r="1.3"/>',
+  people: '<circle cx="9" cy="8" r="3.5"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20a6 6 0 0 1 12 0M15 20a5 5 0 0 1 7-4.5"/>',
+  dollar: '<circle cx="12" cy="12" r="9"/><path d="M12 6v12M15 9.5c0-1.4-1.3-2-3-2s-3 .7-3 2 1.3 2 3 2.5 3 1.1 3 2.5-1.3 2-3 2-3-.6-3-2"/>',
+  sparkles: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8zM5 15l.6 1.6L7 17l-1.4.5L5 19l-.6-1.5L3 17l1.4-.4z"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M19 4l2 2"/>',
+  cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  loc: '<path d="M3 11l18-8-8 18-2-8z"/>', msg: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/>',
+  phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+  ext: '<path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
+  chev: '<path d="M9 6l6 6-6 6"/>', chevl: '<path d="M15 6l-6 6 6 6"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  warn: '<path d="M12 3L2 20h20zM12 9v5M12 17.5v.5"/>', check: '<path d="M5 12l5 5L20 7"/>',
+  checkc: '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',
+  car: '<path d="M4 15l1.5-5a2 2 0 0 1 2-1.5h9a2 2 0 0 1 2 1.5L20 15v4H4z"/><circle cx="7.5" cy="16" r="1"/><circle cx="16.5" cy="16" r="1"/>',
+  key: '<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M21 12v2"/>',
+  search: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>', grid: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  map: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>', dots: '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
+  up: '<path d="M12 19V5M5 12l7-7 7 7"/>', play: '<path d="M7 4l13 8-13 8z"/>', dl: '<path d="M12 3v12M6 11l6 6 6-6M4 21h16"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+  pin: '<path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z"/><circle cx="12" cy="10" r="2"/>',
+  cam: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  aperture: '<circle cx="12" cy="12" r="9"/><path d="M12 3l4.5 8M20.8 9l-9 .2M19 18l-4.6-7.8M12 21l-4.5-8M3.2 15l9-.2M5 6l4.6 7.8"/>',
+  cloud: '<path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/>',
+  rain: '<path d="M7 15a4 4 0 0 1-.5-8A6 6 0 0 1 18 6a4.5 4.5 0 0 1-.5 9z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/>',
+  wind: '<path d="M3 8h11a2.5 2.5 0 1 0-2.5-2.5M3 13h15a3 3 0 1 1-3 3M3 18h8a2 2 0 1 1-2 2"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>', person: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  share: '<path d="M12 3v12M7 8l5-5 5 5M5 13v7h14v-7"/>', pencil: '<path d="M4 20h4L19 9l-4-4L4 16z"/>', house: '<path d="M3 11l9-8 9 8M5 10v10h14V10M10 20v-6h4v6"/>',
+  undo: '<path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/>', expand: '<path d="M4 10V4h6M20 14v6h-6M4 4l6 6M20 20l-6-6"/>',
+  plane: '<path d="M2 14l8-2 4-8h2l-2 8 7 2v2l-7-1-2 6h-2l1-6-9 1z"/>', calx: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v3M12 18v.5"/>',
+  rx: '<path d="M3 11l9-8 9 8M5 10v10h14V10"/>', circle: '<circle cx="12" cy="12" r="9"/>'
+};
+const ic = (n, cls='') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[n]||''}</svg>`;
+const wsym = s => ({sunny:'sun', clear:'sun', cloudy:'cloud', overcast:'cloud', rain:'rain', showers:'rain', windy:'wind', breezy:'wind', 'partly cloudy':'cloud'})[s.toLowerCase()] || 'sun';
+
+/* ===== generated listing photos (no real houses) ===== */
+const artCache = new Map();
+function houseArt(seed, kind='front', w=480, h=300){
+  const key = `${seed}|${kind}|${w}x${h}`; if (artCache.has(key)) return artCache.get(key);
+  const r = rng(seed*7919 + kind.length), c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
+  const twilight = kind==='twilight', golden = kind==='golden';
+  const skies = twilight ? ['#1b2a4a','#4a4f8a','#d98a5a'] : golden ? ['#8fb7e6','#f3c98b','#f6e3bf'] : [['#5fa6e8','#bfe0ff','#eaf4ff'],['#78b3ec','#cfe6fb','#f1f7ff'],['#9bbfd6','#d7e4ec','#eef2f5']][Math.floor(r()*3)];
+  const sky = g.createLinearGradient(0,0,0,h*.62); sky.addColorStop(0, skies[0]); sky.addColorStop(.6, skies[1]); sky.addColorStop(1, skies[2]); g.fillStyle = sky; g.fillRect(0,0,w,h);
+  if (!twilight) for (let i=0;i<4;i++){ g.fillStyle = 'rgba(255,255,255,.75)'; const cx = r()*w, cy = h*(.08+r()*.3), cw = 50+r()*90; for (let k=0;k<4;k++){ g.beginPath(); g.ellipse(cx+k*cw*.22, cy+(k%2)*8, cw*.3, 14+r()*8, 0, 0, Math.PI*2); g.fill(); } }
+  if (kind==='interior'){ g.fillStyle = twilight ? '#2c2c34' : ['#f1ece4','#e9e3d8','#f4f1ea'][Math.floor(r()*3)]; g.fillRect(0,0,w,h*.68); g.fillStyle = ['#b89a76','#9c7b57','#c9b28f'][Math.floor(r()*3)]; g.fillRect(0,h*.68,w,h*.32);
+    for (let i=0;i<Math.floor(h*.32/14);i++){ g.fillStyle='rgba(0,0,0,.06)'; g.fillRect(0,h*.68+i*14,w,1); }
+    g.fillStyle = skies[1]; g.fillRect(w*.58,h*.14,w*.3,h*.42); g.strokeStyle='#fff'; g.lineWidth=6; g.strokeRect(w*.58,h*.14,w*.3,h*.42); g.beginPath(); g.moveTo(w*.73,h*.14); g.lineTo(w*.73,h*.56); g.moveTo(w*.58,h*.35); g.lineTo(w*.88,h*.35); g.stroke();
+    g.fillStyle = ['#7a8ea8','#6f7f6a','#9a7f7a'][Math.floor(r()*3)]; g.beginPath(); g.roundRect(w*.08,h*.5,w*.38,h*.22,10); g.fill(); g.fillStyle='rgba(0,0,0,.12)'; g.fillRect(w*.08,h*.72,w*.38,6);
+    g.fillStyle = '#d9c3a3'; g.beginPath(); g.roundRect(w*.5,h*.62,w*.2,h*.1,6); g.fill();
+    artCache.set(key, c.toDataURL('image/jpeg', .82)); return artCache.get(key); }
+  const horizon = h*.62; g.fillStyle = twilight ? '#2f4a2c' : ['#6da85b','#79b066','#5f9c50'][Math.floor(r()*3)]; g.fillRect(0,horizon,w,h-horizon);
+  g.fillStyle = twilight ? '#3b3b40' : '#a9a9a3'; g.beginPath(); g.moveTo(w*.62,h); g.lineTo(w*.7,horizon+8); g.lineTo(w*.86,horizon+8); g.lineTo(w*.98,h); g.fill();
+  const hx = w*.14, hy = h*.3, hw = w*.5, hh = horizon-hy; const body = twilight ? ['#5a5c66','#6b5d55','#4f5c6a'][Math.floor(r()*3)] : ['#f1efe8','#dfe6ea','#c9b9a3','#8a9aa8','#e8d7c3','#b7c6b0'][Math.floor(r()*6)];
+  g.fillStyle = body; g.fillRect(hx,hy,hw,hh); g.fillStyle='rgba(0,0,0,.12)'; g.fillRect(hx+hw*.62,hy,hw*.38,hh);
+  g.fillStyle = twilight ? '#2a2d33' : ['#45484d','#5b4a42','#36404a'][Math.floor(r()*3)]; g.beginPath(); g.moveTo(hx-14,hy+4); g.lineTo(hx+hw*.5,hy-h*.2); g.lineTo(hx+hw+14,hy+4); g.closePath(); g.fill();
+  const win = twilight ? '#f6d58a' : '#9fc7e8'; const wy = hy+hh*.22, ww = hw*.14, wh = hh*.3;
+  [hx+hw*.08, hx+hw*.3, hx+hw*.7].forEach(x => { g.fillStyle = '#fff'; g.fillRect(x-3,wy-3,ww+6,wh+6); g.fillStyle = win; g.fillRect(x,wy,ww,wh); g.fillStyle='rgba(255,255,255,.7)'; g.fillRect(x+ww/2-1,wy,2,wh); g.fillRect(x,wy+wh/2-1,ww,2); });
+  g.fillStyle = twilight ? '#f6d58a' : '#fff'; g.fillRect(hx+hw*.48,hy+hh*.5,hw*.12,hh*.5); g.fillStyle = ['#7a2e2e','#2e4a7a','#2f2f2f'][Math.floor(r()*3)]; g.fillRect(hx+hw*.49,hy+hh*.52,hw*.1,hh*.48);
+  g.fillStyle = twilight ? '#213d22' : '#3f7a3a'; for (let i=0;i<2;i++){ const tx = i? w*.9 : w*.06, ty = horizon+6; g.beginPath(); g.arc(tx, ty-50-i*10, 34+i*8, 0, Math.PI*2); g.fill(); g.fillStyle='#5a3f2a'; g.fillRect(tx-5,ty-30,10,36); g.fillStyle = twilight ? '#213d22' : '#3f7a3a'; }
+  for (let i=0;i<6;i++){ g.fillStyle = twilight ? '#39542f' : ['#6fa36a','#4f8d4a','#a3c27a'][i%3]; g.beginPath(); g.arc(hx+10+i*hw*.17, horizon+2, 12, Math.PI, 0); g.fill(); }
+  if (twilight){ g.fillStyle='rgba(246,213,138,.25)'; g.beginPath(); g.arc(hx+hw*.5, hy+hh*.4, hw*.6, 0, Math.PI*2); g.fill(); }
+  const vg = g.createRadialGradient(w/2,h/2,h*.3,w/2,h/2,w*.8); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.22)'); g.fillStyle = vg; g.fillRect(0,0,w,h);
+  artCache.set(key, c.toDataURL('image/jpeg', .82)); return artCache.get(key);
+}
+function planArt(seed){ const key = `plan${seed}`; if (artCache.has(key)) return artCache.get(key); const c = document.createElement('canvas'); c.width=400; c.height=300; const g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,400,300); g.strokeStyle='#222'; g.lineWidth=4; g.strokeRect(40,30,320,240); g.lineWidth=2.5; [[40,150,200,150],[200,30,200,270],[200,180,360,180],[120,150,120,270]].forEach(l=>{g.beginPath();g.moveTo(l[0],l[1]);g.lineTo(l[2],l[3]);g.stroke();}); g.fillStyle='#fff'; [[150,146,36,8],[262,176,34,8],[196,90,8,34]].forEach(r=>g.fillRect(...r)); g.fillStyle='#444'; g.font='600 12px system-ui'; ['Living 18×14','Kitchen 14×12','Bed 13×12','Bath','Bed 12×11'].forEach((t,i)=>g.fillText(t,[60,220,60,220,220][i],[70,70,200,110,230][i])); artCache.set(key,c.toDataURL('image/jpeg',.85)); return artCache.get(key); }
+
+/* ===== demo data (made up; no real customers or addresses) ===== */
+const AGENTS = [
+  {name:'Dana Oliveira', phone:'5085550142', email:'dana@example-realty.com', delivered:38, since:-820, video:12},
+  {name:'Marcus Bell', phone:'5085550171', email:'marcus.bell@example.com', delivered:22, since:-610, video:3},
+  {name:'Priya Shah', phone:'7745550133', email:'priya@example-homes.com', delivered:15, since:-420, video:7},
+  {name:'Jordan Pike', phone:'5085550198', email:'jpike@example.com', delivered:9, since:-300, video:0},
+  {name:'Avery Lindqvist', phone:'5085550119', email:'avery@example-coast.com', delivered:6, since:-200, video:2},
+  {name:'Sam Carvalho', phone:'5085550156', email:'sam.carvalho@example.com', delivered:3, since:-500, video:0},
+  {name:'Elena Rossi', phone:'7745550188', email:'elena@example.com', delivered:1, since:-20, video:1},
+  {name:'Theo Nakamura', phone:'5085550177', email:'theo@example.com', delivered:0, since:-2, video:0},
+];
+const PACKAGES = [
+  {title:'Essentials', price:25000, minutes:90}, {title:'Essentials + Drone', price:32500, minutes:105}, {title:'Essentials Plus', price:35000, minutes:120},
+  {title:'Cinematic Video', price:40000, minutes:120}, {title:'All In Lux', price:65000, minutes:180},
+];
+const TOWNS = [['Dartmouth',41.61,-70.97],['New Bedford',41.64,-70.93],['Westport',41.57,-71.08],['Fairhaven',41.64,-70.90],['Mattapoisett',41.66,-70.82],['Marion',41.70,-70.76],['Acushnet',41.68,-70.91],['Somerset',41.77,-71.13],['Swansea',41.75,-71.19],['Fall River',41.70,-71.15],['Rochester',41.73,-70.82],['Wareham',41.76,-70.72]];
+const STREETS = ['Harbor View Rd','Bayberry Ln','Old County Rd','Elm St','Shore Dr','Meadowbrook Ln','Chase Rd','Point Rd','Orchard St','Highland Ave','Cedar Ln','Hix Bridge Rd','Sconticut Neck Rd','Acushnet Ave','Pine Island Rd','Russells Mills Rd','Beach St','Main St','Water St','Fisher Rd'];
+const isVideo = t => /video|cinematic|all in lux/i.test(t) || /^essentials plus/i.test(t);
+function buildData(){
+  const r = rng(20261019), today = startOfDay(now()), jobs = []; let num = 1860;
+  const pick = a => a[Math.floor(r()*a.length)];
+  const mk = (o) => { const pkg = o.pkg || pick(PACKAGES); const items = [{title: pkg.title, amount: pkg.price}]; if (o.plan || (r() < .35 && !o.noPlan)) items.push({title:'2D Floor plan', amount:7500});
+    const town = o.town || pick(TOWNS); const start = o.start; const end = start ? new Date(start.getTime() + pkg.minutes*MIN) : null;
+    const j = { id:'o'+num, number:num--, street:o.street || `${12+Math.floor(r()*280)} ${pick(STREETS)}`, town:town[0], lat:town[1]+(r()-.5)*.05, lon:town[2]+(r()-.5)*.05, agent:o.agent || pick(AGENTS).name,
+      start, end, status:o.status, pkg:pkg.title, items, total: items.reduce((s,i)=>s+i.amount,0), photos:o.photos ?? (o.status==='delivered'||o.status==='editing' ? 14+Math.floor(r()*12) : 0), video: isVideo(pkg.title) ? (o.status==='delivered' ? (o.videoDelivered ?? r()>.3) : false) : null,
+      planDelivered: items.length>1 ? (o.planDelivered ?? r()>.25) : null, created: o.created || (start ? addDays(start, -(5+Math.floor(r()*20))) : addDays(today,-3)), notes:o.notes||'', seed: num, kind: o.kind || (r()<.15?'twilight':'front'), cover:0 };
+    jobs.push(j); return j; };
+  // upcoming: the "today" pair moves to tomorrow once the afternoon is gone, so the demo reads right at any hour
+  const day0 = now().getHours() >= 15 ? addDays(today,1) : today;
+  mk({street:'14 Harbor View Rd', town:TOWNS[0], agent:'Dana Oliveira', pkg:PACKAGES[1], start:at(day0,10,30), status:'booked', photos:9, kind:'golden'});
+  mk({street:'221 Sconticut Neck Rd', town:TOWNS[3], agent:'Marcus Bell', pkg:PACKAGES[2], start:at(day0,14,0), status:'booked', notes:'Lockbox on the side door, code from Marcus. Seller asked for the pool shots at the end.'});
+  mk({street:'8 Bayberry Ln', town:TOWNS[2], agent:'Priya Shah', pkg:PACKAGES[0], start:at(addDays(day0,1),9,0), status:'booked'});
+  mk({street:'37 Point Rd', town:TOWNS[5], agent:'Jordan Pike', pkg:PACKAGES[4], start:at(addDays(day0,2),11,0), status:'booked', plan:true});
+  mk({street:'102 Old County Rd', town:TOWNS[4], agent:'Dana Oliveira', pkg:PACKAGES[2], start:at(addDays(day0,4),13,30), status:'booked'});
+  mk({street:'5 Cedar Ln', town:TOWNS[6], agent:'Avery Lindqvist', pkg:PACKAGES[0], start:at(addDays(day0,6),10,0), status:'booked'});
+  mk({street:'19 Meadowbrook Ln', town:TOWNS[1], agent:'Theo Nakamura', pkg:PACKAGES[0], start:null, status:'unscheduled', created:addDays(today,-2)});
+  // shot, not delivered yet
+  mk({street:'66 Shore Dr', town:TOWNS[2], agent:'Priya Shah', pkg:PACKAGES[3], start:at(addDays(today,-1),15,0), status:'editing'});
+  mk({street:'310 Chase Rd', town:TOWNS[0], agent:'Marcus Bell', pkg:PACKAGES[1], start:at(addDays(today,-2),9,30), status:'editing'});
+  // delivered with missing deliverables
+  mk({street:'48 Elm St', town:TOWNS[1], agent:'Dana Oliveira', pkg:PACKAGES[2], start:at(addDays(today,-5),11,0), status:'delivered', videoDelivered:false, plan:true, planDelivered:true});
+  mk({street:'7 Orchard St', town:TOWNS[7], agent:'Jordan Pike', pkg:PACKAGES[0], start:at(addDays(today,-12),13,0), status:'delivered', plan:true, planDelivered:false});
+  // delivered history, two years
+  const WEIGHTS = [['Dana Oliveira',34],['Marcus Bell',22],['Priya Shah',16],['Jordan Pike',12],['Avery Lindqvist',9],['Sam Carvalho',5],['Elena Rossi',2]];
+  for (let i=0;i<86;i++){ const daysAgo = 3 + Math.floor(Math.pow(r(),1.1)*720); const d = addDays(today,-daysAgo); const hr = 9 + Math.floor(r()*7), mn = r()<.5?0:30;
+    let roll = r()*100, ag = 'Dana Oliveira'; for (const [n,w] of WEIGHTS){ if (roll < w){ ag = n; break; } roll -= w; }
+    if (ag==='Sam Carvalho' && daysAgo < 160) ag = 'Marcus Bell';   // Sam went quiet in the spring
+    if (ag==='Elena Rossi' && daysAgo > 40) ag = 'Priya Shah';      // Elena is brand new
+    mk({agent:ag, start:at(d,hr,mn), status:'delivered', videoDelivered:true, planDelivered:true}); }
+  mk({street:'63 Water St', town:TOWNS[4], agent:'Sam Carvalho', pkg:PACKAGES[0], start:at(addDays(today,-175),10,0), status:'delivered', videoDelivered:true, planDelivered:true});
+  mk({street:'9 Pine Island Rd', town:TOWNS[4], agent:'Elena Rossi', pkg:PACKAGES[2], start:at(addDays(today,-16),11,30), status:'delivered', videoDelivered:true, planDelivered:true});
+  // a return visit to the hero house
+  mk({street:'14 Harbor View Rd', town:TOWNS[0], agent:'Dana Oliveira', pkg:PACKAGES[0], start:at(addDays(today,-480),11,0), status:'delivered', videoDelivered:true, planDelivered:true});
+  jobs.forEach(j => { j.hasVideo = isVideo(j.pkg); j.hasPlan = j.items.length>1; j.flag = (j.status==='delivered' && j.start && (today-startOfDay(j.start))/DAY >= 2 && (today-startOfDay(j.start))/DAY <= 30 && ((j.hasVideo && j.video===false) || (j.hasPlan && j.planDelivered===false))) ? {missing:[j.hasVideo && j.video===false ? 'video':null, j.hasPlan && j.planDelivered===false ? 'a floor plan':null].filter(Boolean)} : null; if (j.flag) j.flag.line = j.flag.missing.length===2 ? 'No video or floor plan yet' : j.flag.missing[0]==='video' ? 'No video yet' : 'No floor plan yet'; });
+  // agent stats from jobs
+  const stats = AGENTS.map(a => { const mine = jobs.filter(j => j.agent===a.name); const del = mine.filter(j => j.status==='delivered'); const sorted = [...mine].sort((x,y)=>x.created-y.created);
+    return {...a, jobs:mine, delivered:del.length, revenue:del.reduce((s,j)=>s+j.total,0), videoOrders:del.filter(j=>j.hasVideo).length, first: sorted[0]?.created || null, last: sorted.at(-1)?.created || null, orders: mine.length}; });
+  stats.forEach(s => { s.group = s.delivered===0 ? 'new' : (s.last && (today - s.last)/DAY < 90) ? 'active' : s.delivered>=3 ? 'lapsed' : 'occasional'; });
+  // money: monthly nets for last year and this year, transactions, payouts
+  const y = today.getFullYear(), m = today.getMonth(); const r2 = rng(77); const monthly = {};
+  for (let yy=y-1; yy<=y; yy++) for (let mm=0; mm<12; mm++){ if (yy===y && mm>m) break; const base = 520000 + Math.sin((mm-2)/12*Math.PI*2)*220000; monthly[`${yy}-${mm}`] = Math.round(base*(yy===y?1.12:1)*(0.8+r2()*.4)); }
+  monthly[`${y}-${m}`] = Math.round(monthly[`${y}-${m}`] * Math.min(1, (today.getDate()+2)/30));
+  const txns = []; const deliveredNewest = jobs.filter(j=>j.status==='delivered').sort((a,b)=>b.start-a.start);
+  deliveredNewest.slice(0,40).forEach((j,i) => { const amt = j.total, fee = Math.round(amt*.029+30); txns.push({type:'payment', amount:amt, fee, net:amt-fee, created:addDays(j.start, 1+Math.floor(r2()*3)), desc:`Payment for Order #${j.number}`, job:j}); });
+  txns.push({type:'refund', amount:-7500, fee:0, net:-7500, created:addDays(today,-9), desc:'Refund for Order #'+deliveredNewest[6].number, job:null});
+  txns.sort((a,b)=>b.created-a.created);
+  const payouts = []; for (let i=0;i<14;i++){ const d = addDays(today, 2 - i*7); payouts.push({amount: 90000+Math.round(r2()*160000), arrival:d, status: i===0?'in_transit': 'paid'}); }
+  const moneyS = { available: 243000, pending: 115250, payouts, txns, monthly, checkedAt: now() };
+  // weather hours for the hero shoot
+  const hours = []; for (let h=9; h<=14; h++) hours.push({h, summary: h<12?'Sunny':h<13?'Partly cloudy':'Windy', temp: 54+h-9, rain: h>=13?20:5, wind: h>=12?22:9});
+  return {jobs, stats, money: moneyS, hours};
+}
+const D = buildData();
+const jobById = id => D.jobs.find(j => j.id===id);
+const statsFor = name => D.stats.find(s => s.name===name);
+const visible = () => D.jobs.filter(j => j.status!=='stale');
+function upcoming(){ const t = now(), lim = addDays(startOfDay(t), 8); return visible().filter(j => j.status!=='delivered' && j.start && (j.end||new Date(j.start.getTime()+HOUR)) > t && j.start < lim).sort((a,b)=>a.start-b.start); }
+const flags = () => visible().filter(j => j.flag).sort((a,b)=>a.start-b.start);
+const recentlyDelivered = () => visible().filter(j => j.status==='delivered' && j.photos && (now()-j.start)/DAY <= 21).sort((a,b)=>b.start-a.start);
+const heroImg = (j, w=480, h=300) => j.photos ? houseArt(j.seed + (j.cover||0)*13, j.cover ? 'interior' : j.kind, w, h) : null;
+const leavePlan = j => { if (!j.start || j.status==='delivered' || (j.start - now()) > 36*HOUR || j.start < now()) return null; const drive = 27 + (j.number % 5)*6; return {drive, leaveAt: new Date(j.start.getTime() - 10*MIN - drive*MIN), label: driveLabel(drive)}; };
+const CHECKS = { [D.jobs[0].id]: {issues:[{kind:'wind', title:'Windy for the drone', detail:'Gusts to 22 mph from noon. The drone part is better before 11 AM.'}], suggestion: at(addDays(startOfDay(now()),3),10)} };
+</script>
+<script>
+/* ===== app state ===== */
+const S = { pose:'closed', dark:null, tab:'today', nav:{today:[],listings:[],customers:[],money:[],ask:[],settings:[]}, sheet:null, gallery:null, menu:null,
+  listingsView:'gallery', search:'', custSearch:'', askTurns:[], askDraft:'', askThinking:false, booking:null, open:{len:90, picked:{}}, mapYear:false, mapTown:null,
+  showAllPhotos:false, pastCount:24, allPay:false, allPayouts:false, schedDay:null, sort:'last', savedKeys:false, claudeTest:'' };
+const wide = () => S.pose !== 'closed';
+const route = () => S.nav[S.tab].at(-1) || null;
+
+/* ===== shared pieces ===== */
+const slimbar = (title, o={}) => `<div class="slimbar ${o.grouped?'grouped':''}">${o.back ? `<button class="back" data-act="back">${ic('chevl')}<span>${esc(o.back)}</span></button>`:''}<span>${esc(title)}</span>${o.trail?`<div class="trail">${o.trail}</div>`:''}</div>`;
+const sechead = (t, n, action) => `<div class="sechead"><span class="t">${esc(t)}</span>${n!=null?`<span class="n">${esc(n)}</span>`:''}${action?`<span style="margin-left:auto" class="acc sub" style="font-weight:600">${action}</span>`:''}</div>`;
+function dateArt(d){ return `<div class="dateart serif">${ic('aperture','')}<div class="w" style="font-family:-apple-system,system-ui,sans-serif">${d?esc(fmt(d,'EEEE')):'Date to be set'}</div><div class="d">${d?esc(fmt(d,'d')):'–'}</div><div class="m" style="font-family:-apple-system,system-ui,sans-serif">${d?esc(fmt(d,'MMMM')):''}</div></div>`; }
+function artBlock(j, w, h){ const img = heroImg(j, w, h); return img ? `<img src="${img}" alt="">` : dateArt(j.start); }
+// Stand-in for the Apple map the app shows when a shoot has coordinates but no photo yet (no map tiles can load here).
+function miniMap(){ return `<div class="mapbox" style="position:absolute;inset:0"><svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:100%" aria-hidden="true">${[15,38,61,84].map(x=>`<path d="M${x} 0 V100" stroke="rgba(0,0,0,.12)" stroke-width="1.8"/>`).join('')}${[22,50,78].map(y=>`<path d="M0 ${y} H100" stroke="rgba(0,0,0,.12)" stroke-width="2.4"/>`).join('')}<path d="M0 74 Q 30 64 50 76 T 100 70 V100 H0Z" fill="${S.dark?'#17313d':'#bcd6e8'}"/><path d="M38 10 L41 40 L62 44 L66 70" stroke="rgba(255,255,255,.9)" stroke-width="2.2" fill="none"/></svg><span class="pin" style="left:50%;top:48%">${ic('cam')}</span></div>`; }
+function shootCard(j, o={}){ const flag = o.flag || null;
+  return `<button class="shoot pressable" data-act="open-shoot" data-id="${j.id}" style="${o.w?`width:${o.w}px`:''}"><div class="art">${artBlock(j,480,300)}${o.time && j.start ? `<span class="timepill">${esc(clockAMPM(j.start))}</span>`:''}</div><div class="street serif">${esc(j.street)}</div>${flag ? `<div class="line2 flag">${ic('warn')}${esc(flag.line)}</div>` : `<div class="line2">${esc(j.town)}${o.agent===false?'':`&nbsp;&nbsp;&nbsp;<span class="ag">${esc(j.agent)}</span>`}</div>`}${o.caption?`<div class="cap sec" style="padding:0 2px">${esc(o.caption)}</div>`:''}</button>`; }
+function rail(title, note, items, w, fn){ return `<div class="rail"><div class="gut">${sechead(title, note)}</div><div class="strip">${items.map(j => `<div style="width:${w}px">${fn(j)}</div>`).join('')}</div></div>`; }
+const statusChip = (text, color) => `<span class="statuschip" style="color:${color};background:color-mix(in srgb,${color} 16%,transparent)">${esc(text)}</span>`;
+const JS_LABEL = {booked:'Booked', editing:'Shot', delivered:'Delivered', unscheduled:'Booked', stale:'Never closed out'};
+const jsColor = s => s==='delivered' ? 'var(--green)' : (s==='editing'||s==='stale') ? 'var(--gray)' : 'var(--acc)';
+const missingKey = () => `<div class="empty">${ic('key')}<b>Connect Aryeo</b><div>Open Settings and paste your Aryeo API key. The app reads your schedule, listings and customers straight from Aryeo.</div></div>`;
+
+/* ===== Today ===== */
+function whenLine(j){ const t = now(); if (!j.start) return 'Date to be set'; const end = j.end || new Date(j.start.getTime()+HOUR); if (j.start <= t && end > t) return `Happening now, until ${clockAMPM(end)}`; if (sameDay(j.start,t)) return `Today at ${clockAMPM(j.start)}`; if (sameDay(j.start, addDays(t,1))) return `Tomorrow at ${clockAMPM(j.start)}`; return `${fmt(j.start,'EEEE')} at ${clockAMPM(j.start)}`; }
+function screenToday(){ const t = now(), up = upcoming(), todays = up.filter(j => sameDay(j.start, t)); const W = wide();
+  const headline = todays.length ? `${todays.length} shoot${todays.length>1?'s':''} today` : !up.length ? 'Nothing booked this week' : sameDay(up[0].start, addDays(t,1)) ? 'Next shoot tomorrow' : `Next shoot ${fmt(up[0].start,'EEEE')}`;
+  const btns = `<div class="row" style="gap:10px"><button class="circ acc pressable" data-act="book" aria-label="Book a shoot">${ic('plus')}</button><button class="circ pressable" data-act="push" data-route="opentimes" aria-label="Open times">${ic('clock')}</button><button class="circ pressable" data-act="push" data-route="schedule" aria-label="Schedule">${ic('cal')}</button></div>`;
+  const header = W ? `<div class="row" style="justify-content:space-between"><div style="flex:1;min-width:0"><div class="sub sec" style="font-weight:600">${esc(fmt(t,'EEEE, MMMM d'))}</div><div class="serif" style="font-size:30px;line-height:1.15">${esc(headline)}</div></div>${btns}</div>`
+    : `<div><div class="row" style="justify-content:space-between"><div class="sub sec" style="font-weight:600">${esc(fmt(t,'EEEE, MMMM d'))}</div>${btns}</div><div class="serif" style="font-size:28px;line-height:1.15;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(headline)}</div></div>`;
+  let hero = '';
+  if (up.length){ const j = up[0], lp = leavePlan(j), img = heroImg(j, 900, 560), chk = CHECKS[j.id];
+    const details = `<div class="sub" style="font-weight:600;${img?'opacity:.85':'color:var(--acc)'}">${esc(whenLine(j))}</div><div class="street serif">${esc(j.street)}</div><div class="sub" style="opacity:.75">${esc(j.town)}, for ${esc(j.agent)}</div>${lp && j.start > t ? `<div class="sub" style="font-weight:600;display:flex;gap:6px;align-items:center;margin-top:4px;${lp.leaveAt<=t?'color:var(--orange)':''}">${ic('car')}${lp.leaveAt<=t?`Leave now, ${esc(lp.label)}`:`Leave by ${esc(clockAMPM(lp.leaveAt))}, ${esc(lp.label)}`}</div>`:''}`;
+    hero = `<div style="display:flex;flex-direction:column;gap:14px"><button class="hero pressable" data-act="open-shoot" data-id="${j.id}" style="height:${W?440:360}px">${img ? `<img src="${img}" alt=""><div class="shade"></div><div class="txt">${details}</div>` : `<div style="position:absolute;left:0;right:0;top:0;height:${W?260:180}px">${j.lat?miniMap():dateArt(j.start)}</div><div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);color:var(--label);padding:20px;display:flex;flex-direction:column;gap:5px">${details}</div>`}</button>
+      <div class="row" style="gap:12px"><button class="primary pressable" data-act="noop">${ic('loc')}Directions</button><button class="primary quiet pressable" data-act="noop">${ic('msg')}Text ${esc(j.agent.split(' ')[0])}</button></div>
+      ${chk ? `<button class="warnbar pressable" data-act="push" data-route="check">${ic('warn')}<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(chk.issues[0].title)}${chk.issues.length>1?`, and ${chk.issues.length-1} more`:''}</span><span class="chev">${ic('chev')}</span></button>`:''}</div>`;
+  } else hero = `<div class="card" style="border-radius:24px;padding:24px;gap:8px"><span class="acc" style="font-size:40px;line-height:1">${ic('aperture')}</span><div class="serif" style="font-size:24px">A clear week</div><div class="sub sec">New bookings from Aryeo show up here on their own.</div></div>`;
+  const fl = flags(), rest = up.slice(1), rd = recentlyDelivered();
+  return `<div class="page plain"><div class="content"><div class="gut">${header}</div><div class="gut">${hero}</div>
+    ${fl.length ? rail('Missing','video or floor plan not delivered', fl, W?300:250, j => shootCard(j,{flag:j.flag})) : ''}
+    ${rest.length ? rail('This week', null, rest, W?300:240, j => shootCard(j,{time:true})) : ''}
+    ${rd.length ? rail('Recently delivered', null, rd, W?340:270, j => shootCard(j)) : ''}
+    <div class="gut fn ter">Updated ${esc(relTime(new Date(Date.now()-4*MIN)))}</div></div></div>`; }
+
+/* ===== Listings ===== */
+function screenListings(){ const W = wide(), q = S.search.trim().toLowerCase(); const up = visible().filter(j => j.status==='booked'||j.status==='unscheduled').sort((a,b)=> (a.start?a.start:9e15) - (b.start?b.start:9e15)); const shot = visible().filter(j => j.status==='delivered'||j.status==='editing').sort((a,b)=>b.start-a.start); const fl = flags();
+  const search = `<div class="searchf">${ic('search')}<input id="lsearch" placeholder="Address, agent, package or order #" value="${esc(S.search)}" data-input="search"></div>`;
+  if (q){ const res = [...up, ...shot].filter(j => [j.street,j.town,j.agent,j.pkg,String(j.number)].some(s => s.toLowerCase().includes(q))).slice(0,120);
+    return `<div class="page">${slimbar('Listings')}${search}<div class="content gut" style="gap:14px">${sechead('Results', res.length)}${res.length?`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(${W?250:160}px,1fr))">${res.map(j=>shootCard(j,{flag:j.flag,time:j.status==='booked'})).join('')}</div>`:`<div class="sub sec">Nothing matches “${esc(S.search)}”.</div>`}</div></div>`; }
+  const seg = `<div class="gut" style="padding-top:8px;padding-bottom:8px"><div class="segc" style="max-width:320px"><button data-act="lview" data-v="gallery" aria-pressed="${S.listingsView==='gallery'}">${ic('grid')}Gallery</button><button data-act="lview" data-v="map" aria-pressed="${S.listingsView==='map'}">${ic('map')}Map</button></div></div>`;
+  if (S.listingsView==='map') return `<div class="page" style="display:flex;flex-direction:column;overflow:hidden;padding-right:0"><div style="flex:none;position:relative;z-index:2;background:var(--bgc)">${slimbar('Listings')}${search}${seg}</div>${mapView()}</div>`;
+  const shown = shot.slice(0, S.pastCount);
+  return `<div class="page">${slimbar('Listings')}${search}${seg}<div class="content" style="padding-top:6px">
+    ${fl.length ? rail('Missing', fl.length, fl, W?290:240, j => shootCard(j,{flag:j.flag})) : ''}
+    ${up.length ? rail('Upcoming', up.length, up, W?290:220, j => shootCard(j,{time:true})) : ''}
+    <div class="gut" style="display:flex;flex-direction:column;gap:14px">${sechead('Past shoots', shot.length)}<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(${W?250:160}px,1fr))">${shown.map(j=>shootCard(j,{flag:j.flag,time:j.status==='booked'})).join('')}</div>${shot.length>S.pastCount?`<button class="primary quiet pressable" data-act="more-past" style="margin-top:4px">Show more</button>`:''}</div></div></div>`; }
+function mapView(){ const W = wide(); const mapped = visible().filter(j => j.status!=='unscheduled' && (!S.mapYear || j.start.getFullYear()===now().getFullYear())); const towns = {}; mapped.forEach(j => (towns[j.town] = towns[j.town]||[]).push(j)); const names = Object.keys(towns).sort((a,b)=>towns[b].length-towns[a].length); const max = towns[names[0]]?.length||1;
+  const pos = {}; TOWNS.forEach(t => pos[t[0]] = t); const lons = TOWNS.map(t=>t[2]), lats = TOWNS.map(t=>t[1]); const minLon = Math.min(...lons)-.05, maxLon = Math.max(...lons)+.05, minLat = Math.min(...lats)-.04, maxLat = Math.max(...lats)+.04;
+  const px = t => ({x: (pos[t][2]-minLon)/(maxLon-minLon)*100, y: (maxLat-pos[t][1])/(maxLat-minLat)*100});
+  const sel = S.mapTown && towns[S.mapTown] ? S.mapTown : null; const tj = sel ? towns[sel].sort((a,b)=>b.start-a.start) : [];
+  const earliest = tj.length ? tj.reduce((m,j)=> j.start<m?j.start:m, tj[0].start) : null; const byAg = {}; tj.forEach(j => byAg[j.agent]=(byAg[j.agent]||0)+1); const topAg = Object.entries(byAg).sort((a,b)=>b[1]-a[1])[0];
+  const line = tj.length ? `${tj.length===1?'1 shoot':`${tj.length} shoots`} since ${fmt(earliest,'MMMM yyyy')}${topAg && topAg[1]>1 ? `. Most with ${topAg[0]} (${topAg[1]}).` : '.'}` : '';
+  return `<div class="mapbox" style="flex:1;position:relative;z-index:1;min-height:0"><svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%" aria-hidden="true"><path d="M0 62 C 12 55, 20 70, 32 64 S 50 74, 60 68 S 78 80, 90 72 L 100 76 L 100 100 L 0 100 Z" fill="${S.dark?'#17313d':'#bcd6e8'}"/><path d="M0 0 H100 V62 L90 72 C 78 80, 70 70, 60 68 S 42 72, 32 64 S 12 55, 0 62 Z" fill="none"/>${[18,34,50,66,82].map(x=>`<path d="M${x} 0 V70" stroke="rgba(0,0,0,.06)" stroke-width=".4"/>`).join('')}${[14,30,46].map(y=>`<path d="M0 ${y} H100" stroke="rgba(0,0,0,.06)" stroke-width=".4"/>`).join('')}</svg>
+    <div class="gut" style="position:absolute;left:0;right:0;top:10px;z-index:2"><div style="background:var(--bgc);border-radius:20px;padding:12px 16px;box-shadow:0 3px 10px rgba(0,0,0,.12);display:flex;${W?'align-items:center;gap:10px':'flex-direction:column;gap:10px'}"><div style="flex:1"><div class="serif head">${mapped.length} shoots in ${names.length} towns</div><div class="cap sec">Tap a town to see its shoots. Zoom in for houses.</div></div><div class="segc" style="${W?'width:190px':''}"><button data-act="mapyear" data-v="0" aria-pressed="${!S.mapYear}">All time</button><button data-act="mapyear" data-v="1" aria-pressed="${S.mapYear}">This year</button></div></div></div>
+    ${(() => { // merge bubbles that would overlap, like the app does; a tap on a merged one fans its towns out
+      const mw = POSES[S.pose].w - (W?98:78), mh = POSES[S.pose].h - 200; const dia = c => Math.min(78, 28 + 46*Math.sqrt(c/max));
+      const z = S.mapZoom; const pt = n => { const p = px(n); let x = 40 + p.x/100*(mw-80), y = 100 + p.y/100*(mh-200); if (z){ x = mw/2 + (x - z.x)*z.k; y = mh/2 + (y - z.y)*z.k; } return {x, y}; };
+      const clusters = []; names.forEach(n => { const p = pt(n), c = towns[n].length, d = dia(c); const hit = clusters.find(k => Math.hypot(k.x-p.x, k.y-p.y) < (dia(k.count)+d)/2*.8); if (hit){ hit.x = (hit.x*hit.count + p.x*c)/(hit.count+c); hit.y = (hit.y*hit.count + p.y*c)/(hit.count+c); hit.count += c; hit.names.push(n); } else clusters.push({x:p.x, y:p.y, count:c, names:[n]}); });
+      const inBox = k => k.x > -40 && k.x < mw+40 && k.y > 60 && k.y < mh+40;
+      return clusters.filter(inBox).map(k => { const d = dia(k.count); if (k.names.length > 1) return `<button class="bub merged" data-act="mapzoom" data-x="${k.x.toFixed(0)}" data-y="${k.y.toFixed(0)}" style="left:${k.x}px;top:${k.y}px;width:${d}px;height:${d}px;font-size:${Math.max(12,d*.3)}px" aria-label="${esc(k.names[0])} and ${k.names.length-1} more, ${k.count} shoots. Tap to zoom in" title="${esc(k.names[0])} and ${k.names.length-1} more">${k.count}</button>`;
+        const n = k.names[0]; return `<button class="bub ${sel===n?'sel':''}" data-act="maptown" data-t="${esc(n)}" style="left:${k.x}px;top:${k.y}px;width:${d}px;height:${d}px;font-size:${Math.max(12,d*.3)}px" aria-label="${esc(n)}, ${k.count} shoots" title="${esc(n)}">${k.count}</button>`; }).join('') + (z ? `<button class="chip pressable" data-act="mapzoom" data-x="" style="position:absolute;right:${W?110:92}px;bottom:${sel?'auto':'14px'};top:${sel?'96px':'auto'};background:var(--bgc);box-shadow:0 2px 8px rgba(0,0,0,.15);font-weight:600">Zoom out</button>` : ''); })()}
+    ${sel ? `<div style="position:absolute;left:${W?0:10}px;right:${W?0:10}px;bottom:10px;z-index:3;display:flex;justify-content:center"><div class="fade-in" style="background:var(--bgc);border-radius:28px;padding:18px 0;box-shadow:0 4px 16px rgba(0,0,0,.18);display:flex;flex-direction:column;gap:14px;width:100%;max-width:${W?760:9999}px"><div class="row" style="padding:0 18px;align-items:flex-start"><div style="flex:1"><div class="serif" style="font-size:28px;line-height:1.1">${esc(sel)}</div><div class="sub sec">${esc(line)}</div></div><button class="circ" style="width:32px;height:32px;background:var(--surface)" data-act="maptown" data-t="" aria-label="Close">${ic('x')}</button></div><div class="rail"><div class="strip" style="padding:0 18px;gap:12px">${tj.slice(0,40).map(j=>`<div style="width:${W?230:190}px">${shootCard(j,{time:j.status==='booked'})}</div>`).join('')}</div></div></div></div>`:''}</div>`; }
+
+/* ===== Customers ===== */
+function custSubline(s){ if (!s.last) return 'No orders yet'; if (s.delivered===0) return `First order booked ${fmt(s.last,'MMM d')}`; if (s.delivered===1) return `1 shoot, last booked ${fmt(s.last,'MMM d')}`; return `${s.delivered} shoots, last booked ${fmt(s.last,'MMM d')}`; }
+function screenCustomers(){ const W = wide(), q = S.custSearch.trim().toLowerCase(); let list = [...D.stats].sort((a,b)=>(b.last||0)-(a.last||0)); if (q) list = list.filter(s => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q) || (/\d/.test(q) && s.phone.includes(q.replace(/\D/g,''))));
+  const search = `<div class="searchf">${ic('search')}<input placeholder="Name, phone or email" value="${esc(S.custSearch)}" data-input="cust"></div>`;
+  if (W){ const cols = [['Agent','name'],['Shoots','delivered'],['Booked','revenue'],['Average','avg'],['Last booked','last'],['Video','video']]; const val = (s,k) => k==='avg' ? (s.delivered?s.revenue/s.delivered:-1) : k==='video' ? (s.delivered? s.videoOrders/s.delivered : -1) : k==='last' ? (s.last||0) : s[k];
+    const sk = S.sort.replace('-',''), desc = !S.sort.startsWith('-'); list.sort((a,b)=> { const x = val(a,sk), y = val(b,sk); return (typeof x==='string') ? (desc? x.localeCompare(y) : y.localeCompare(x)) : (desc ? y-x : x-y); });
+    return `<div class="page">${slimbar('Customers')}${search}<div style="padding:0 12px 100px"><table style="width:100%;border-collapse:collapse;font-size:15px"><thead><tr>${cols.map(([t,k])=>`<th style="text-align:${k==='name'?'left':'right'};padding:8px 6px;color:var(--sec);font-weight:600;font-size:13px;cursor:pointer" data-act="sort" data-k="${k}">${esc(t)}${sk===k?(desc?' ↓':' ↑'):''}</th>`).join('')}</tr></thead><tbody>${list.map(s=>`<tr data-act="open-agent" data-n="${esc(s.name)}" style="cursor:pointer;border-top:1px solid var(--sep)"><td style="padding:8px 6px"><span class="row" style="gap:8px">${mono(s.name,30)}<span style="font-weight:500">${esc(s.name)}</span></span></td><td class="tnum" style="text-align:right;padding:8px 6px">${s.delivered}</td><td class="tnum" style="text-align:right;padding:8px 6px">${whole(s.revenue)}</td><td class="tnum" style="text-align:right;padding:8px 6px">${s.delivered?whole(s.revenue/s.delivered):'—'}</td><td class="tnum" style="text-align:right;padding:8px 6px">${s.last?fmt(s.last,'MMM d, yyyy'):'—'}</td><td class="tnum" style="text-align:right;padding:8px 6px">${s.delivered?Math.round(s.videoOrders/s.delivered*100)+'%':'—'}</td></tr>`).join('')}</tbody></table></div></div>`; }
+  return `<div class="page">${slimbar('Customers')}${search}<div style="padding:0 14px 100px 18px">${list.map(s=>`<button class="list-row pressable" data-act="open-agent" data-n="${esc(s.name)}" style="width:100%">${mono(s.name,42)}<div style="flex:1;min-width:0"><div style="font-weight:600">${esc(s.name)}</div><div class="sub sec" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(custSubline(s))}</div></div>${s.group==='new'?statusChip('New','var(--green)'):''}</button>`).join('')}</div></div>`; }
+function rhythm(s){ const paid = [...s.jobs].sort((a,b)=>a.created-b.created); if (paid.length < 4) return ''; const gaps = []; for (let i=1;i<paid.length;i++){ const g = (paid[i].created-paid[i-1].created)/DAY; if (g>=1) gaps.push(g); } gaps.sort((a,b)=>a-b); const med = gaps[Math.floor(gaps.length/2)]; if (!med || med > 90) return ''; let t = med < 10 ? `Usually books about every ${Math.round(med)} days.` : `Usually books about every ${Math.max(1,Math.round(med/7))} weeks.`; const since = (now()-s.last)/DAY; if (since > 2*med && since > 21) t += ` It's been ${since<60?Math.round(since/7)+' weeks':Math.round(since/30)+' months'}, worth a check-in.`; return t; }
+function screenAgent(name){ const W = wide(), s = statsFor(name); const next = s.jobs.filter(j=>j.status==='booked'&&j.start&&j.start>now()).sort((a,b)=>a.start-b.start)[0]; const parts = []; if (next) parts.push(`Next shoot ${fmt(next.start,'EEEE, MMM d')} at ${next.street}.`); const rh = rhythm(s); if (rh) parts.push(rh); else if (!next && s.group==='lapsed' && s.last) parts.push(`Quiet since ${fmt(s.last,'MMMM d')}, after ${s.delivered} shoots together.`);
+  const fig = (t,v,d) => `<div style="display:flex;flex-direction:column;gap:3px"><div class="sub sec">${t}</div><div class="serif t2" style="white-space:nowrap">${v}</div><div class="cap sec">${d}</div></div>`;
+  const months = []; const t = now(); for (let i=23;i>=0;i--){ const d = new Date(t.getFullYear(), t.getMonth()-i, 1); months.push({d, n: s.jobs.filter(j => j.created.getFullYear()===d.getFullYear() && j.created.getMonth()===d.getMonth()).length}); } const mx = Math.max(1,...months.map(m=>m.n));
+  const towns = {}; s.jobs.forEach(j => towns[j.town]=(towns[j.town]||0)+1); const tt = Object.entries(towns).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const shoots = [...s.jobs.filter(j=>j.status==='booked'||j.status==='unscheduled').sort((a,b)=>(a.start||9e15)-(b.start||9e15)), ...s.jobs.filter(j=>j.status==='delivered'||j.status==='editing').sort((a,b)=>b.start-a.start)];
+  const orders = [...s.jobs].sort((a,b)=>b.created-a.created).slice(0, W?60:25);
+  return `<div class="page">${slimbar('', {back:'Customers', trail:`<button data-act="book" data-agent="${esc(name)}" aria-label="Book a shoot">${ic('cal')}</button>`})}<div class="content" style="gap:28px;padding-top:16px">
+    <div class="gut" style="display:flex;flex-direction:column;gap:16px"><div class="row" style="gap:16px">${mono(name, W?84:72)}<div><div class="serif" style="font-size:${W?34:28}px;line-height:1.1">${esc(name)}</div>${s.first?`<div class="sub sec">Working together since ${fmt(s.first,'MMMM yyyy')}</div>`:''}</div></div>
+      <div class="row" style="gap:10px;max-width:${W?520:9999}px"><button class="primary pressable" data-act="noop">${ic('phone')}Call</button><button class="primary quiet pressable" data-act="noop">${ic('msg')}Text</button><button class="primary quiet pressable" data-act="noop">${ic('mail')}Email</button></div></div>
+    ${parts.length?`<div class="gut"><div class="sub" style="display:flex;gap:8px;align-items:flex-start;padding:14px;border-radius:16px;background:color-mix(in srgb,var(--acc) 12%,transparent)">${ic('sparkles')}<span>${esc(parts.join(' '))}</span></div></div>`:''}
+    <div class="gut grid" style="grid-template-columns:repeat(${W?4:2},1fr);gap:20px 16px">${fig('Shoots', s.delivered, 'delivered')}${fig('Booked', whole(s.revenue), 'all time')}${fig('Average', s.delivered?whole(s.revenue/s.delivered):'—', 'per order')}${fig('Video', s.delivered?`${s.videoOrders} of ${s.delivered}`:'—', 'orders with video')}</div>
+    ${months.some(m=>m.n)?`<div class="gut" style="display:flex;flex-direction:column;gap:12px">${sechead('Orders by month','last two years')}<div style="height:${W?170:140}px;display:flex;align-items:flex-end;gap:3px;border-bottom:1px solid var(--sep)">${months.map(m=>`<div title="${esc(fmt(m.d,'MMM yy'))}: ${m.n}" style="flex:1;height:${Math.max(2,m.n/mx*100)}%;border-radius:3px 3px 0 0;background:${m.d.getFullYear()===t.getFullYear()?'var(--acc)':'color-mix(in srgb,var(--gray) 35%,transparent)'}"></div>`).join('')}</div><div class="row cap sec" style="justify-content:space-between">${months.filter((m,i)=>i%6===0).map(m=>`<span>${esc(fmt(m.d,'MMM yy'))}</span>`).join('')}</div>${tt.length?`<div class="flow">${tt.map(([n,c])=>`<span class="chip">${esc(n)}<span class="cnt">${c}</span></span>`).join('')}</div>`:''}</div>`:''}
+    ${shoots.length?rail('Shoots', shoots.length, shoots, W?300:240, j=>shootCard(j,{agent:false,time:j.status==='booked'})):''}
+    <div class="gut"><div style="margin-bottom:8px">${sechead('Orders', orders.length)}</div>${orders.map(j=>`<div style="padding:10px 0;border-bottom:1px solid var(--sep);display:flex;justify-content:space-between;gap:12px;align-items:baseline"><div style="min-width:0"><div class="sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(j.items.map(i=>i.title).join(' + '))}</div><div class="cap sec">Order ${j.number}, ${esc(fmt(j.created,'MMM d, yyyy'))}</div></div><div class="sub tnum" style="font-weight:600">${money(j.total)}</div></div>`).join('')}</div></div></div>`; }
+
+/* ===== Money ===== */
+function screenMoney(){ const W = wide(), M = D.money, t = now(), y = t.getFullYear(), m = t.getMonth(); const net = (yy,mm) => M.monthly[`${yy}-${mm}`]||0; const thisMonth = net(y,m); const lastYearSame = Math.round(net(y-1,m) * t.getDate()/30);
+  const compare = (a,b,label) => b===0 ? (a===0?'Nothing yet':`Nothing in ${label}`) : Math.abs(a-b) < 100 ? `Same as ${label}` : `${whole(Math.abs(a-b))} ${a>b?'more':'less'} than ${label}`;
+  const fig = (t,v,d) => `<div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0"><div class="sub sec">${t}</div><div class="serif t2" style="white-space:nowrap">${v}</div>${d?`<div class="cap sec">${d}</div>`:''}</div>`;
+  const nextP = M.payouts.find(p=>p.status==='in_transit'||p.status==='pending'), lastP = M.payouts.find(p=>p.status==='paid');
+  const ytd = []; for (let i=0;i<=m;i++) ytd.push(net(y,i)); const ytdNet = ytd.reduce((a,b)=>a+b,0); const lastYtd = Array.from({length:m+1},(_,i)=>net(y-1,i)).reduce((a,b)=>a+b,0) - net(y-1,m) + lastYearSame; const lastFull = Array.from({length:12},(_,i)=>net(y-1,i)).reduce((a,b)=>a+b,0);
+  const pays = M.txns.filter(x=>x.type==='payment'); const gross = pays.reduce((s,x)=>s+x.amount,0), fees = pays.reduce((s,x)=>s+x.fee,0);
+  const pace = lastYtd>0 && lastFull>lastYtd && ytdNet>0 ? Math.floor((ytdNet + (lastFull-lastYtd)*ytdNet/lastYtd)/100000)*100000 : null;
+  const maxV = Math.max(...Array.from({length:12},(_,i)=>Math.max(net(y,i),net(y-1,i)))); const ticks = [0, Math.round(maxV/2/100000)*100000||50000, Math.ceil(maxV/100000)*100000];
+  const chart = `<div style="display:flex;gap:8px"><div class="cap sec tnum" style="display:flex;flex-direction:column;justify-content:space-between;height:${W?260:200}px;text-align:right">${[...ticks].reverse().map(v=>`<span>${v>=100000?`$${Math.round(v/100000)}k`:`$${v/100}`}</span>`).join('')}</div><div style="flex:1;position:relative;height:${W?260:200}px"><div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between">${ticks.map(()=>'<div style="height:1px;background:var(--sep)"></div>').join('')}</div><div style="position:absolute;inset:0;display:flex;gap:6px;align-items:flex-end;padding:0 2px">${Array.from({length:12},(_,i)=>`<div style="flex:1;display:flex;gap:2px;align-items:flex-end;height:100%" title="${MONTHS[i]}: ${whole(net(y-1,i))} last year${i<=m?`, ${whole(net(y,i))} this year`:''}"><div style="flex:1;height:${net(y-1,i)/ticks[2]*100}%;background:var(--chart2);border-radius:3px 3px 0 0"></div><div style="flex:1;height:${i<=m?net(y,i)/ticks[2]*100:0}%;background:var(--acc);border-radius:3px 3px 0 0"></div></div>`).join('')}</div></div></div><div style="display:flex;gap:6px;padding-left:34px" class="cap sec">${'JFMAMJJASOND'.split('').map(l=>`<span style="flex:1;text-align:center">${l}</span>`).join('')}</div><div class="row cap sec" style="gap:14px;padding-left:34px"><span class="row" style="gap:5px"><i style="width:10px;height:10px;border-radius:2px;background:var(--chart2)"></i>${y-1}</span><span class="row" style="gap:5px"><i style="width:10px;height:10px;border-radius:2px;background:var(--acc)"></i>${y}</span></div>`;
+  const table = `<details class="cap sec"><summary style="cursor:pointer">Month by month as numbers</summary><table class="tnum" style="width:100%;margin-top:6px;border-collapse:collapse"><tr><th style="text-align:left">Month</th><th style="text-align:right">${y-1}</th><th style="text-align:right">${y}</th></tr>${Array.from({length:12},(_,i)=>`<tr><td>${MONTHS[i].slice(0,3)}</td><td style="text-align:right">${whole(net(y-1,i))}</td><td style="text-align:right">${i<=m?whole(net(y,i)):'—'}</td></tr>`).join('')}</table></details>`;
+  const who = {}; M.txns.filter(x=>x.job && x.created.getFullYear()===y).forEach(x => { const w = who[x.job.agent] = who[x.job.agent]||{net:0,n:0}; w.net += x.net; w.n++; }); const whoL = Object.entries(who).sort((a,b)=>b[1].net-a[1].net).slice(0,8); const allNet = M.txns.filter(x=>x.type==='payment'&&x.created.getFullYear()===y).reduce((s,x)=>s+x.net,0); const matched = whoL.reduce((s,[,w])=>s+w.net,0);
+  const payRows = (S.allPay ? M.txns : M.txns.slice(0,12)).map(x => x.job ? `<button class="row pressable" data-act="open-shoot" data-id="${x.job.id}" style="width:100%;padding:9px 0;border-bottom:1px solid var(--sep)"><span style="width:40px;height:40px;border-radius:10px;overflow:hidden;flex:none;background:var(--fill)"><img src="${heroImg(x.job,160,100)}" alt="" style="width:100%;height:100%;object-fit:cover"></span><span style="flex:1;min-width:0"><span class="serif sub" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.job.street)}</span><span class="cap sec" style="display:block">${esc(x.job.agent)}, ${esc(fmt(x.created,'MMM d'))}</span></span><span style="text-align:right"><span class="sub tnum" style="display:block;font-weight:600;${x.type==='refund'?'color:var(--red)':''}">${money(x.net)}</span>${x.fee?`<span class="cap sec tnum" style="display:block">${money(x.fee)} fee</span>`:''}</span></button>` : `<div class="row" style="padding:9px 0;border-bottom:1px solid var(--sep)"><span style="flex:1"><span class="sub" style="display:block">${esc(x.desc||(x.type==='refund'?'Refund':'Payment'))}</span><span class="cap sec" style="display:block">${esc(fmt(x.created,'MMM d, yyyy'))}</span></span><span class="sub tnum" style="font-weight:600;${x.type==='refund'?'color:var(--red)':''}">${money(x.net)}</span></div>`).join('');
+  const pStatus = s => ({paid:'In your bank', in_transit:'On its way', pending:'Scheduled', failed:'Failed', canceled:'Canceled'})[s]||s;
+  const payoutRows = (S.allPayouts ? M.payouts : M.payouts.slice(0,10)).map(p=>`<div class="row" style="padding:9px 0;border-bottom:1px solid var(--sep)"><span style="flex:1"><span class="sub" style="display:block">${esc(fmt(p.arrival,'EEE MMM d, yyyy'))}</span><span class="cap ${p.status==='failed'||p.status==='canceled'?'red':'sec'}" style="display:block">${pStatus(p.status)}</span></span><span class="sub tnum" style="font-weight:600">${money(p.amount)}</span></div>`).join('');
+  const payments = `<div><div class="t3" style="font-weight:600;font-size:20px;margin-bottom:8px">Payments</div>${payRows}${M.txns.length>12?`<button class="sub acc" style="font-weight:600;padding-top:10px" data-act="toggle" data-k="allPay">${S.allPay?'Show fewer':`Show all ${Math.min(M.txns.length,200)}`}</button>`:''}</div>`;
+  const payouts = `<div><div style="font-weight:600;font-size:20px;margin-bottom:8px">Payouts to your bank</div>${payoutRows}${M.payouts.length>10?`<button class="sub acc" style="font-weight:600;padding-top:10px" data-act="toggle" data-k="allPayouts">${S.allPayouts?'Show fewer':`Show all ${M.payouts.length}`}</button>`:''}</div>`;
+  return `<div class="page">${slimbar('Money',{trail:`<span style="font:700 15px/1 system-ui;color:#635bff;letter-spacing:-.02em">stripe</span>`})}<div class="content gut" style="gap:26px;padding-top:16px">
+    <div style="display:flex;flex-direction:column;gap:4px"><div class="head sec">Received in ${MONTHS[m]}</div><div class="serif" style="font-size:${W?56:44}px;line-height:1">${whole(thisMonth)}</div><div class="sub sec">${esc(compare(thisMonth,lastYearSame,`${MONTHS[m]} 1–${t.getDate()} last year`))}</div></div>
+    <div style="display:flex;align-items:flex-start">${fig('Available', whole(M.available), 'ready to pay out')}<div style="width:1px;background:var(--sep);align-self:stretch;margin:0 14px"></div>${fig('On the way', whole(M.pending), 'still clearing')}<div style="width:1px;background:var(--sep);align-self:stretch;margin:0 14px"></div>${nextP?fig('Next payout', whole(nextP.amount), `lands ${fmt(nextP.arrival,'EEE MMM d')}`):lastP?fig('Last payout', whole(lastP.amount), `landed ${fmt(lastP.arrival,'MMM d')}`):fig('Payouts','—','none yet')}</div>
+    <div style="display:flex;flex-direction:column;gap:10px"><div style="font-weight:600;font-size:20px">Month by month</div>${chart}${table}</div>
+    <div style="display:flex;flex-direction:column;gap:12px"><div style="font-weight:600;font-size:20px">This year so far</div>${pace?`<div class="sub sec row" style="gap:6px;align-items:flex-start">${ic('up')}<span>On pace for about ${whole(pace)} this year, if the rest of it goes like the rest of ${y-1}. Last year finished at ${whole(lastFull)}.</span></div>`:''}<div class="grid" style="grid-template-columns:repeat(${W?4:2},1fr);gap:18px 16px">${fig('Received', whole(ytdNet), compare(ytdNet,lastYtd,'this time last year'))}${fig('Payments', pays.length, pays.length?`about ${whole(gross/pays.length)} each`:'')}${fig('Stripe fees', whole(fees), gross?`${(fees/gross*100).toFixed(1)}% of what clients paid`:'')}${fig('Charged', whole(gross), 'before fees and refunds')}</div></div>
+    ${whoL.length?`<div><div style="font-weight:600;font-size:20px">Who paid you this year</div><div class="cap sec" style="padding-bottom:8px">From Stripe payments matched to their orders (${allNet?Math.round(matched/allNet*100):0}% of this year's money).</div><div class="grid" style="grid-template-columns:repeat(${W?2:1},1fr);gap:0 28px">${whoL.map(([n,w],i)=>`<button class="row pressable" data-act="open-agent" data-n="${esc(n)}" style="padding:10px 0;width:100%">${mono(n,36)}<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px"><span class="row" style="justify-content:space-between"><span class="sub" style="font-weight:600">${esc(n)}</span><span class="serif sub tnum">${whole(w.net)}</span></span><span style="height:5px;border-radius:3px;background:var(--acc);opacity:${i?.45:.9};width:${Math.max(2,w.net/whoL[0][1].net*100)}%"></span><span class="cap sec">${w.n===1?'1 payment':`${w.n} payments`}</span></span></button>`).join('')}</div></div>`:''}
+    ${W?`<div style="display:flex;gap:28px;align-items:flex-start"><div style="flex:1;min-width:0">${payments}</div><div style="flex:1;min-width:0">${payouts}</div></div>`:payments+payouts}
+    <div class="cap sec">From Stripe, checked ${esc(clockAMPM(M.checkedAt))}. Pull down to refresh.</div></div></div>`; }
+
+/* ===== Ask ===== */
+const SUGGEST = ['Who hasn\'t booked since spring?','How is this month tracking against the same month last year?','Which agents never add video?','What are my top 5 towns this year?','Who are my newest clients?','How much has Stripe actually paid out this year, and what did fees cost me?'];
+function askAnswer(q){ const t = now(), y = t.getFullYear(), m = t.getMonth(), M = D.money; const ql = q.toLowerCase();
+  if (ql.includes('since spring')){ const quiet = D.stats.filter(s => s.last && (t - s.last)/DAY > 120).sort((a,b)=>a.last-b.last); if (!quiet.length) return 'Everyone who has booked with you has booked within the last four months.'; const w = quiet[0]; return `${quiet.length===1?'One agent hasn\'t':`${quiet.length} agents haven't`} booked since spring:\n${quiet.map(s=>`- **${s.name}**, last order ${fmt(s.last,'MMMM d')}, ${s.delivered} shoot${s.delivered===1?'':'s'} with you`).join('\n')}\n\n${w.name} is the one worth a nudge: ${w.delivered} shoot${w.delivered===1?'':'s'}, then nothing for ${Math.round((t - w.last)/DAY/30)} months.`; }
+  if (ql.includes('tracking')){ const a = M.monthly[`${y}-${m}`]||0, b = Math.round((M.monthly[`${y-1}-${m}`]||0)*t.getDate()/30); return `${MONTHS[m]} so far: **${whole(a)}** received, against **${whole(b)}** by this date last year, so you're ${a>=b?'ahead':'behind'} by ${whole(Math.abs(a-b))}. ${upcoming().length} shoots are still booked this week, which should add about ${whole(upcoming().reduce((s,j)=>s+j.total,0))} once they're paid.`; }
+  if (ql.includes('never add video')){ const none = D.stats.filter(s=>s.delivered>=3 && s.videoOrders===0); return `${none.length} regular${none.length===1?'':'s'} never add video:\n${none.map(s=>`- **${s.name}**: ${s.delivered} shoots, all photos only`).join('\n')}\n\nThe rest add it at least sometimes. Dana Oliveira adds it most: video on ${statsFor('Dana Oliveira').videoOrders} of ${statsFor('Dana Oliveira').delivered}.`; }
+  if (ql.includes('top 5 towns')){ const c = {}; D.jobs.filter(j=>j.status==='delivered'&&j.start.getFullYear()===y).forEach(j=>c[j.town]=(c[j.town]||0)+1); const top = Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,5); return `Top towns this year by delivered shoots:\n${top.map(([n,k],i)=>`${i+1}. **${n}**, ${k} shoots`).join('\n')}\n\nThat's ${top.reduce((s,x)=>s+x[1],0)} of ${Object.values(c).reduce((a,b)=>a+b,0)} shoots, so your work is still concentrated close to home.`; }
+  if (ql.includes('newest')){ const n = [...D.stats].sort((a,b)=>(b.first||0)-(a.first||0)).slice(0,3); return `Your newest clients:\n${n.map(s=>`- **${s.name}**, first order ${fmt(s.first,'MMMM d')}${s.delivered?`, ${s.delivered} delivered`:', nothing delivered yet'}`).join('\n')}`; }
+  if (ql.includes('paid out')){ const po = M.payouts.filter(p=>p.status==='paid'&&p.arrival.getFullYear()===y).reduce((s,p)=>s+p.amount,0); const fees = M.txns.filter(x=>x.type==='payment').reduce((s,x)=>s+x.fee,0); return `Stripe has paid **${whole(po)}** into your bank this year across ${M.payouts.filter(p=>p.status==='paid'&&p.arrival.getFullYear()===y).length} payouts, with **${whole(M.pending)}** still clearing. Fees on the recent payments came to **${money(fees)}**, about ${(fees/M.txns.filter(x=>x.type==='payment').reduce((s,x)=>s+x.amount,0)*100).toFixed(1)}% of what clients paid.`; }
+  if (ql.includes('next week')){ const u = upcoming(); return `${u.length} shoots in the next 8 days:\n${u.map(j=>`- ${fmt(j.start,'EEE')} ${clockAMPM(j.start)}, **${j.street}**, ${j.town}, for ${j.agent.split(' ')[0]} (${j.pkg})`).join('\n')}`; }
+  if (ql.includes('missing')){ const f = flags(); return `${f.length} recent shoots are missing something:\n${f.map(j=>`- **${j.street}**: ${j.flag.line.toLowerCase()}, shot ${fmt(j.start,'MMM d')}`).join('\n')}`; }
+  if (ql.includes('lapsed')){ const l = D.stats.filter(s=>s.group==='lapsed'); return `Start with ${l.map(s=>`**${s.name}**`).join(' and ')}: ${l.map(s=>`${s.delivered} shoots, quiet since ${fmt(s.last,'MMMM')}`).join('; ')}.`; }
+  if (ql.includes('doing this year')){ const nm = (q.match(/How is (.+?) doing/)||[])[1]; const s = nm && statsFor(nm); if (s){ const ty = s.jobs.filter(j=>j.created.getFullYear()===y).length, ly = s.jobs.filter(j=>j.created.getFullYear()===y-1).length; return `**${s.name}** has booked ${ty} shoots this year against ${ly} by the end of last year, ${whole(s.jobs.filter(j=>j.created.getFullYear()===y&&j.status==='delivered').reduce((a,j)=>a+j.total,0))} delivered so far.`; } }
+  if (ql.includes('deliver') || ql.includes('busy')){ const k = D.jobs.filter(j=>j.status==='delivered'&&j.start.getFullYear()===y&&j.start.getMonth()===m).length; return `You delivered **${k}** shoots in ${MONTHS[m]} so far, with ${upcoming().length} more booked this week.`; }
+  return `In this demo Claude answers the suggested questions from the made-up data. On the phone it reads your real Aryeo orders and Stripe totals, so you can ask it anything about your business.`; }
+function mdLite(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^(\s*)[-*] /gm, (m,sp)=> (sp.length>=2?'      ':'') + '•  '); }
+function screenAsk(){ const W = wide(), t = now(), m = t.getMonth(); const empty = !S.askTurns.length;
+  const intro = `<div style="display:flex;flex-direction:column;gap:10px"><div class="sec">Questions about your business, answered from live Aryeo and Stripe data.</div>${(!W && empty)?SUGGEST.map(q=>`<button class="pressable" data-act="ask" data-q="${esc(q)}" style="background:var(--surface);border-radius:14px;padding:12px;font-size:16px;width:100%">${esc(q)}</button>`).join(''):''}</div>`;
+  const tile = (t,v,d,q,stripe) => `<button class="pressable" data-act="ask" data-q="${esc(q)}" style="background:var(--surface);border-radius:16px;padding:12px;min-height:92px;display:flex;flex-direction:column;gap:4px;align-items:flex-start;width:100%"><span class="cap sec row" style="font-weight:600;width:100%;gap:6px"><span style="flex:1">${t}</span>${stripe?'<span style="font:700 11px/1 system-ui;color:#635bff">stripe</span>':''}</span><span class="serif t2" style="white-space:nowrap">${v}</span><span class="cap sec">${d}</span></button>`;
+  const u = upcoming(), fl = flags(), shotM = D.jobs.filter(j=>j.start&&j.start<t&&j.start.getMonth()===m&&j.start.getFullYear()===t.getFullYear()&&j.status!=='stale').length; const act = D.stats.filter(s=>s.group==='active').length, lap = D.stats.filter(s=>s.group==='lapsed').length; const tc = {}; D.jobs.filter(j=>j.status==='delivered'&&j.start.getFullYear()===t.getFullYear()).forEach(j=>tc[j.town]=(tc[j.town]||0)+1); const topT = Object.entries(tc).sort((a,b)=>b[1]-a[1])[0];
+  const monthPays = D.money.txns.filter(x=>x.type==='payment'&&x.created.getMonth()===m&&x.created.getFullYear()===t.getFullYear());
+  const snapshot = (W && empty) ? `<div style="display:flex;flex-direction:column;gap:14px"><div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">${tile(`Received in ${MONTHS[m]}`, whole(D.money.monthly[`${t.getFullYear()}-${m}`]||0), `${monthPays.length} payments, ${whole(monthPays.reduce((s,x)=>s+x.fee,0))} in fees`, `How busy has ${MONTHS[m]} been compared to last month?`, true)}${tile('Next 7 days', `${u.length} shoot${u.length===1?'':'s'}`, u.length?`Next: ${esc(u[0].street)}`:'Nothing booked', 'What does my next week look like?')}${tile('Missing', fl.length?String(fl.length):'All delivered', fl.length?`${esc(fl[0].street)}: ${esc(fl[0].flag.line.toLowerCase())}`:'Every recent video and floor plan is in', 'Which recent shoots are missing their video or floor plan?')}${tile('Shot this month', String(shotM), `shoots done in ${MONTHS[m]}`, `How many shoots did I do in ${MONTHS[m]} compared to last ${MONTHS[m]}?`)}${tile('Agents', `${act} active`, `${lap} quiet lately, worth a check-in`, 'Which lapsed agents should I reach out to first?')}${tile('Top town this year', topT?esc(topT[0]):'—', topT?`${topT[1]} shoots`:'', 'What are my top 5 towns this year?')}</div>
+    <div style="background:var(--surface);border-radius:16px;padding:14px"><div class="sub sec" style="font-weight:600;padding-bottom:8px">Top agents this year, by amount booked</div>${[...D.stats].map(s=>({s, n:s.jobs.filter(j=>j.status==='delivered'&&j.created.getFullYear()===t.getFullYear()).length, tot:s.jobs.filter(j=>j.status==='delivered'&&j.created.getFullYear()===t.getFullYear()).reduce((a,j)=>a+j.total,0)})).filter(x=>x.n).sort((a,b)=>b.tot-a.tot).slice(0,5).map((x,i,arr)=>`<button class="row" data-act="ask" data-q="How is ${esc(x.s.name)} doing this year compared to last year?" style="width:100%;padding:8px 0;${i<arr.length-1?'border-bottom:1px solid var(--sep)':''}"><span class="sub sec tnum" style="width:20px">${i+1}</span><span style="flex:1">${esc(x.s.name)}</span><span class="sub sec tnum">${x.n===1?'1 shoot':`${x.n} shoots`}, ${money(x.tot)}</span></button>`).join('')}</div></div>` : '';
+  const turns = S.askTurns.map(tn=>`<div style="display:flex;flex-direction:column;gap:10px"><div class="bubble">${esc(tn.q)}</div>${tn.a!=null?`<div class="answer">${mdLite(tn.a)}</div>`:''}</div>`).join('');
+  const thinking = S.askThinking && S.askTurns.at(-1)?.a==null ? `<div class="row sub sec" style="gap:10px"><span class="spin"></span>Claude is reading your orders. Detailed answers can take up to a minute.</div>` : '';
+  const chat = `<div class="page" style="padding-bottom:0"><div style="padding:16px 16px 90px;display:flex;flex-direction:column;gap:16px">${empty?intro+snapshot:''}${turns}${thinking}</div></div><div class="inputbar">${ic('search','')}<input placeholder="Ask about shoots, agents, money…" value="${esc(S.askDraft)}" data-input="ask"><button class="send" data-act="ask-send" aria-label="Send" ${S.askDraft.trim()&&!S.askThinking?'':'disabled'}>${ic('up')}</button></div>`;
+  const bar = slimbar('Ask', empty?{}:{trail:`<button data-act="ask-new" aria-label="New question">${ic('pencil')}</button>`});
+  if (!W) return bar.replace('class="slimbar"','class="slimbar" style="position:absolute;left:0;right:0"') + chat.replace('class="page"','class="page" style="padding-top:94px"');
+  return bar.replace('class="slimbar"','class="slimbar" style="position:absolute;left:0;right:0"') + `<div class="asksplit" style="position:absolute;inset:0;padding-top:94px;display:flex"><div style="width:270px;flex:none;background:var(--group);border-right:1px solid var(--sep);overflow:auto;padding:12px 14px"><div class="cap sec" style="padding:4px 16px 6px;text-transform:uppercase;letter-spacing:.02em">Try asking</div><div class="gcard">${SUGGEST.map(q=>`<button class="grow acc" data-act="ask" data-q="${esc(q)}" style="width:100%;${S.askThinking?'opacity:.45':''}">${esc(q)}</button>`).join('')}</div>${S.askTurns.length?`<div class="cap sec" style="padding:18px 16px 6px;text-transform:uppercase;letter-spacing:.02em">This conversation</div><div class="gcard">${S.askTurns.map(tn=>`<div class="grow sec" style="gap:10px">${ic(tn.a==null?'dots':'msg')}<span style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(tn.q)}</span></div>`).join('')}</div>`:''}</div><div style="flex:1;position:relative;min-width:0">${chat.replace('class="page"','class="page" style="padding-top:0;padding-right:0"')}</div></div>`; }
+
+/* ===== Settings ===== */
+function screenSettings(){ const W = wide(); const seg = `<div class="segc" style="background:var(--fill)"><button aria-pressed="${S.dark===null}" data-act="appearance" data-v="system">Match iPhone</button><button aria-pressed="${S.dark===false}" data-act="appearance" data-v="light">Light</button><button aria-pressed="${S.dark===true}" data-act="appearance" data-v="dark">Dark</button></div>`;
+  const krow = (l,ph,on,logo) => `<div class="grow"><span style="width:64px;font-weight:500">${logo?'<span style="font:700 15px/1 system-ui;color:#635bff">stripe</span>':esc(l)}</span><span class="sec" style="flex:1;letter-spacing:2px">••••••••••••••••</span><span class="dot ${on?'on':''}"></span></div>`;
+  const left = `<div class="gsec"><div class="gh">Appearance</div>${seg}</div><div class="gsec"><div class="gh">Connections</div><div class="gcard">${krow('Aryeo','API key',true)}${krow('Claude','API key (sk-ant-…)',true)}${krow('','Restricted key (rk_live_…)',true,true)}<button class="grow" data-act="savekeys" style="width:100%;font-weight:600;${S.savedKeys?'':'opacity:.45'}"><span>Save keys</span>${S.savedKeys?`<span class="green row" style="margin-left:auto;gap:4px;font-weight:500">${ic('checkc')}Saved</span>`:''}</button></div><div class="gf">Keys stay in this iPhone's keychain. The Stripe key is read-only, so it can never move money. Maps are Apple Maps and need no key.</div></div>`;
+  const right = `<div class="gsec"><div class="gh">Alerts</div><div class="gcard"><div class="grow"><span>Morning briefing at 7 AM</span><span class="toggle" role="switch" aria-checked="true"></span></div></div><div class="gf">On shoot days: what's booked and anything the upcoming check flagged. Leave-by alerts and the Lock Screen countdown always come with your next shoot.</div></div>
+    <div class="gsec"><div class="gh">Your data</div><div class="gcard"><div class="grow"><span>Shoots</span><span class="v tnum">${visible().length}</span></div><div class="grow"><span>Agents</span><span class="v tnum">${D.stats.length}</span></div><div class="grow"><span>Updated</span><span class="v">${esc(fmt(now(),'MMM d, yyyy'))} at ${esc(clockAMPM(new Date(Date.now()-4*MIN)))}</span></div><button class="grow acc" data-act="noop" style="width:100%">Re-download everything from Aryeo</button></div></div>
+    <div class="gsec"><div class="gcard"><button class="grow acc" data-act="testclaude" style="width:100%">Test Claude</button>${S.claudeTest?`<div class="grow fn sec">${esc(S.claudeTest)}</div>`:''}</div><div class="gf">Claude writes listing kits, answers Ask questions and drafts texts. For Ask it gets your Aryeo orders and, with Stripe connected, your Stripe totals and recent payments. It never changes anything in Aryeo or Stripe.</div></div>
+    <div class="gsec"><div class="gcard"><div class="grow"><span>ShootDesk</span><span class="v">1.0 (1)</span></div></div><div class="gf">Built for Horizon Home Media.</div></div>`;
+  return `<div class="page grouped">${slimbar('Settings',{grouped:true})}${W?`<div style="display:flex;align-items:flex-start"><div class="form" style="flex:1;padding-left:28px;padding-right:14px">${left}</div><div class="form" style="flex:1;padding-left:14px;padding-right:110px">${right}</div></div>`:`<div class="form">${left}${right}</div>`}</div>`; }
+</script>
+<script>
+/* ===== Shoot page ===== */
+function statusLine(j){ const t = now(); switch (j.status){ case 'delivered': return j.photos ? `Delivered, ${j.photos} photos` : 'Delivered'; case 'editing': return `Shot ${fmt(j.start,'EEEE, MMM d')}`; case 'unscheduled': return 'Booked, date to be set'; case 'stale': return 'Never closed out in Aryeo'; default: if (!j.start) return 'Booked'; if (sameDay(j.start,t)) return `Today at ${clockAMPM(j.start)}`; if (sameDay(j.start,addDays(t,1))) return `Tomorrow at ${clockAMPM(j.start)}`; return `${fmt(j.start,'EEEE, MMM d')} at ${clockAMPM(j.start)}`; } }
+function heroArt(j, h){ const img = heroImg(j, 1000, 700); const W = wide();
+  const txt = `<div style="position:absolute;left:0;right:0;bottom:0;padding:${img?6:16}px var(--gut);display:flex;flex-direction:column;gap:4px;${img?'':'background:var(--glass);backdrop-filter:blur(14px)'}"><div class="sub" style="font-weight:600;color:${j.status==='delivered'?'var(--green)':'var(--acc)'}">${esc(statusLine(j))}</div><div class="serif" style="font-size:${W?38:32}px;line-height:1.1">${esc(j.street)}</div><div class="head sec" style="font-weight:400">${esc(j.town)}, MA</div></div>`;
+  if (img) return `<div style="position:relative;height:${h}px;overflow:hidden;background:var(--fill)"><img src="${img}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 25%,rgba(0,0,0,0) 45%,color-mix(in srgb,var(--bgc) 85%,transparent) 88%,var(--bgc) 100%)"></div>${txt}</div>`;
+  return `<div style="position:relative;height:${h}px;overflow:hidden">${j.lat ? `<div class="mapbox" style="position:absolute;inset:0"><svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:100%" aria-hidden="true">${[15,38,61,84].map(x=>`<path d="M${x} 0 V100" stroke="rgba(0,0,0,.12)" stroke-width="2"/>`).join('')}${[22,50,78].map(y=>`<path d="M0 ${y} H100" stroke="rgba(0,0,0,.12)" stroke-width="2.4"/>`).join('')}<path d="M0 70 Q 30 60 50 72 T 100 68 V100 H0Z" fill="${S.dark?'#17313d':'#bcd6e8'}"/></svg><span class="pin" style="left:50%;top:46%">${ic('cam')}</span></div>` : dateArt(j.start)}${txt}</div>`; }
+function shootDetails(j){ const W = wide(), s = statsFor(j.agent), chk = CHECKS[j.id], ss = j.start ? sunset(j.start, j.lat, j.lon) : null;
+  const golden = j.start ? sunTime(j.start, j.lat, j.lon, 84) : null, dusk = j.start ? sunTime(j.start, j.lat, j.lon, 96) : null; const gap = j.end && ss ? Math.round((ss - j.end)/MIN) : null;
+  const actions = `<div class="actions"><button class="prom pressable" data-act="noop">${ic('loc')}Directions</button><button class="pressable" data-act="noop">${ic('phone')}Call</button><button class="pressable" data-act="onmyway">${ic('msg')}On my way</button><button class="pressable" data-act="noop">${ic('ext')}Aryeo</button></div>`;
+  const flagBanner = j.flag ? `<div class="row" style="gap:10px;padding:14px;border-radius:16px;background:color-mix(in srgb,var(--orange) 12%,transparent)"><span class="row orange sub" style="gap:6px;font-weight:500;flex:1">${ic('warn')}${esc(j.flag.line)}. The order includes ${esc(j.flag.missing.join(' and '))}.</span><button class="sub" style="font-weight:600;padding:6px 12px;border:1px solid var(--sep);border-radius:10px" data-act="notneeded" data-id="${j.id}">Not needed</button></div>` : '';
+  const heads = chk ? `<div class="card"><h4>Heads up</h4>${chk.issues.map(i=>`<div class="row" style="align-items:flex-start"><span class="${i.kind==='rain'||i.kind==='wind'?'cyan':i.kind==='email'||i.kind==='unscheduled'?'red':'orange'}" style="width:22px;font-size:20px">${ic(i.kind==='rain'?'rain':i.kind==='wind'?'wind':i.kind==='airspace'?'plane':i.kind==='email'?'mail':i.kind==='unscheduled'?'calx':'sunh')}</span><div><div class="sub" style="font-weight:600">${esc(i.title)}</div><div class="fn sec">${esc(i.detail)}</div></div></div>`).join('')}${chk.suggestion?`<div class="divider"></div><button class="row acc sub" style="font-weight:600;justify-content:space-between;width:100%" data-act="push" data-route="check"><span>Better day: ${esc(fmt(chk.suggestion,'EEEE, MMM d'))} at ${esc(clockAMPM(chk.suggestion))}</span><span class="ter">${ic('chev')}</span></button>`:''}</div>` : '';
+  const shoot = `<div class="card"><h4>The shoot</h4><div class="irow"><span class="l">When</span><span class="v">${j.start?`${esc(fmt(j.start,'EEE, MMM d'))}, ${esc(timeRange(j.start,j.end))}`:'Date to be set'}</span></div>${j.start&&j.end?`<div class="irow"><span class="l">Length</span><span class="v">${esc(durLabel(Math.round((j.end-j.start)/MIN)))}</span></div>`:''}<div class="irow"><span class="l">Address</span><span class="v">${esc(j.street)}, ${esc(j.town)}, MA</span></div><div class="divider"></div>${j.items.map(i=>`<div class="irow"><span class="l">${esc(i.title)}</span><span class="v">${money(i.amount)}</span></div>`).join('')}<div class="irow" style="font-weight:600"><span>Order ${j.number}</span><span class="tnum">${money(j.total)}</span></div></div>`;
+  const hist = s ? (s.delivered===0 ? 'New client, first order with you.' : [`${s.delivered} delivered`, s.first?`working together since ${fmt(s.first,'MMMM yyyy')}`:null, s.videoOrders===0?'no video yet':`video on ${s.videoOrders} of ${s.delivered}`].filter(Boolean).join(', ')+'.') : '';
+  const agent = `<div class="card"><h4>Agent</h4><div class="row">${mono(j.agent,46)}<div style="display:flex;flex-direction:column;gap:2px;min-width:0"><div class="serif" style="font-size:20px">${esc(j.agent)}</div><div class="sub sec">${esc(phonePretty(s?.phone||''))}</div><div class="sub sec" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s?.email||'')}</div></div></div><div class="fn sec">${esc(hist)}</div></div>`;
+  const hours = D.hours.map(h => { const d = at(j.start||now(), h.h); return `<div style="min-width:48px;padding:8px 4px;border-radius:12px;background:color-mix(in srgb,var(--bgc) 60%,transparent);display:flex;flex-direction:column;align-items:center;gap:4px"><span class="cap2 sec" style="font-weight:600">${esc(fmt(d,'h a'))}</span><span style="font-size:20px;height:24px;color:${wsym(h.summary)==='sun'?'#f0a500':'var(--cyan)'}">${ic(wsym(h.summary))}</span><span class="sub" style="font-weight:600">${h.temp}°</span>${h.rain>=20?`<span class="cap2 cyan" style="font-weight:600">${h.rain}%</span>`:''}</div>`; }).join('');
+  const light = `<div class="card"><h4>Light and weather</h4>${ss?`<div class="irow"><span class="l">Sunset</span><span class="v">${esc(clockAMPM(ss))}</span></div>${golden?`<div class="irow"><span class="l">Golden light</span><span class="v">from ${esc(clockAMPM(golden))}</span></div>`:''}${dusk?`<div class="irow"><span class="l">Twilight</span><span class="v">${esc(fmt(ss,'h:mm'))} – ${esc(clockAMPM(dusk))}</span></div>`:''}${gap!=null&&j.status!=='delivered'?`<div class="irow"><span class="l">Wraps</span><span class="v ${gap<15?'orange':''}">${gap>=0?`${esc(durLabel(gap))} before sunset`:'after sunset'}</span></div>`:''}`:`<div class="sub sec">Sunset shows once the shoot has a time and address.</div>`}${j.status!=='delivered'&&j.start&&Math.abs(j.start-now())<6*DAY?`<div class="irow"><span class="l">Forecast</span><span class="v">59°, partly cloudy, 20% rain, wind 22 mph</span></div><div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px">${hours}</div>`:''}</div>`;
+  const notes = j.notes ? `<div class="card"><h4>Order notes</h4><div>${esc(j.notes)}</div></div>` : '';
+  const photos = []; for (let i=0;i<j.photos;i++) photos.push({i, src: houseArt(j.seed + i*13, i===0?j.kind:(i%4===1?'interior':i%4===2?'twilight':i%4===3?'golden':'front'), 480, 360)});
+  const preview = S.showAllPhotos ? photos : photos.slice(0, W?15:12); const cover = j.cover||0; const plans = j.hasPlan && j.planDelivered ? [{title:'Floor plan 1'},{title:'Floor plan 2'}] : []; const vids = j.hasVideo && j.video ? [{title:'Video 1', dur:'2:14'}] : [];
+  const media = (j.status==='delivered'||j.status==='editing'||photos.length||vids.length) ? `<div style="display:flex;flex-direction:column;gap:26px">${(vids.length||photos.length)?`<button class="primary pressable" data-act="present" data-id="${j.id}">${ic('play')}Present listing</button>`:''}
+    ${vids.length?`<div style="display:flex;flex-direction:column;gap:12px">${sechead('Video')}<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(${W?320:260}px,1fr));gap:14px"><button class="pressable" data-act="gallery" data-id="${j.id}" data-i="0" style="display:flex;flex-direction:column;gap:8px"><span style="position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;display:block"><img src="${heroImg(j,640,360)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;filter:brightness(.82)"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><span style="width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.3);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px">${ic('play','f')}</span></span></span><span class="row" style="justify-content:space-between"><span class="sub" style="font-weight:600">Video 1</span><span class="sub sec tnum">2:14</span></span></button></div></div>`:''}
+    ${photos.length?`<div style="display:flex;flex-direction:column;gap:12px">${sechead('Photos', photos.length)}<div class="photogrid" style="grid-template-columns:repeat(auto-fill,minmax(${W?150:104}px,1fr))">${preview.map(p=>`<button class="ph" data-act="gallery" data-id="${j.id}" data-i="${p.i}" data-menu="1" aria-label="Photo ${p.i+1}"><img src="${p.src}" alt="">${p.i===cover?'<span class="cover">Cover</span>':''}</button>`).join('')}</div>${photos.length>preview.length||S.showAllPhotos?`<button class="sub acc" style="font-weight:600" data-act="toggle" data-k="showAllPhotos">${S.showAllPhotos?'Show fewer':`Show all ${photos.length}`}</button>`:''}<div class="row" style="gap:10px"><button class="primary quiet pressable" data-act="noop">${ic('dl')}Save all ${photos.length}</button><button class="primary quiet pressable" data-act="noop">${ic('sparkles')}Listing kit</button></div></div>`:''}
+    ${plans.length?`<div style="display:flex;flex-direction:column;gap:12px">${sechead('Floor plans', plans.length)}<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(${W?220:150}px,1fr));gap:12px">${plans.map((p,i)=>`<button class="pressable" style="display:flex;flex-direction:column;gap:6px"><span style="display:block;height:${W?170:130}px;background:#fff;border-radius:8px;padding:4px"><img src="${planArt(j.seed+i)}" alt="" style="width:100%;height:100%;object-fit:contain;display:block"></span><span class="cap sec">${esc(p.title)}</span></button>`).join('')}</div></div>`:''}
+    ${!photos.length&&!vids.length?`<div class="sub sec">Nothing delivered in Aryeo yet.</div>`:''}</div>` : '';
+  const before = visible().filter(o => o.id!==j.id && o.street.toLowerCase()===j.street.toLowerCase() && o.town===j.town).sort((a,b)=>(b.start||0)-(a.start||0));
+  const beforeRail = before.length ? `<div class="rail" style="margin:0 calc(-1 * var(--gut))">${rail('This house before', before.length===1?'1 other order':`${before.length} other orders`, before, W?280:230, o => shootCard(o,{caption: o.start?`Shot ${fmt(o.start,'MMMM yyyy')}`:`Ordered ${fmt(o.created,'MMMM d, yyyy')}, never scheduled`}))}</div>` : '';
+  const cards = W ? `<div style="display:flex;gap:18px;align-items:flex-start"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:18px">${shoot}${heads}${notes}</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:18px">${agent}${light}</div></div>` : [heads, shoot, agent, light, notes].join('');
+  return `<div class="gut" style="display:flex;flex-direction:column;gap:22px;padding-top:18px;padding-bottom:110px">${actions}${flagBanner}${cards}${media}${beforeRail}</div>`; }
+function screenShoot(j, half){ const W = wide();
+  if (half){ const band = half; return `<div style="position:absolute;inset:0;display:flex;flex-direction:column">${heroArt(j, band.top)}<div style="height:${band.bottom-band.top}px;background:var(--bgc)"></div><div class="page under" style="position:relative;flex:1">${shootDetails(j)}</div></div><button class="backfloat pressable" data-act="back" aria-label="Back">${ic('chevl')}</button>`; }
+  return `<div class="page under">${heroArt(j, W?460:400)}${shootDetails(j)}</div><button class="backfloat pressable" data-act="back" aria-label="Back">${ic('chevl')}</button><button class="backfloat pressable" data-act="noop" aria-label="More" style="left:auto;right:${W?104:84}px">${ic('dots')}</button>`; }
+
+/* ===== Availability: days, gaps, timeline ===== */
+function dayPlan(day, len){ const t = now(), opens = at(day,8), closes = sunset(day); const busy = visible().filter(j => j.start && j.status!=='stale' && sameDay(j.start, day)).map(j => ({j, from:j.start, to:j.end||new Date(j.start.getTime()+HOUR)})).sort((a,b)=>a.from-b.from);
+  const q = (d, up) => { const ms = 15*MIN; return new Date(up ? Math.ceil(d.getTime()/ms)*ms : Math.floor(d.getTime()/ms)*ms); };
+  let cur = sameDay(day,t) && t > opens ? q(t,true) : opens; const gaps = [];
+  for (const b of busy){ const end = q(new Date(Math.min(b.from.getTime()-30*MIN, closes.getTime())), false); if (end - cur >= 15*MIN) gaps.push({from:cur, to:end}); cur = new Date(Math.max(cur.getTime(), q(new Date(b.to.getTime()+30*MIN), true).getTime())); }
+  const last = q(closes,false); if (last - cur >= 15*MIN) gaps.push({from:cur,to:last});
+  return {day, opens, closes, busy, gaps, fits: gaps.filter(g => g.to-g.from >= len*MIN)}; }
+function timeline(p, len){ const span = p.closes - p.opens; const x = d => Math.max(0, Math.min(100, (d-p.opens)/span*100)); const t = now();
+  return `<div><div class="timeline" aria-label="Timeline for the day">${p.fits.map(g=>`<i class="free" style="left:${x(g.from)}%;width:${Math.max(.5,x(g.to)-x(g.from))}%"></i>`).join('')}${p.busy.map(b=>`<i class="pad" style="left:${x(new Date(b.from-30*MIN))}%;width:${x(new Date(b.to.getTime()+30*MIN))-x(new Date(b.from-30*MIN))}%"></i><i class="busy" style="left:${x(b.from)}%;width:${Math.max(.8,x(b.to)-x(b.from))}%"></i>`).join('')}${sameDay(p.day,t)&&t>p.opens&&t<p.closes?`<i class="now" style="left:${x(t)}%"></i>`:''}</div><div class="tlcap"><span>8 AM</span><span>Sunset ${esc(shortT(p.closes))}</span></div></div>`; }
+function gapPhrase(g, p){ const fromStart = Math.abs(g.from - p.opens) < 60000, toEnd = Math.abs(p.closes - g.to) <= 15*MIN; const s = fromStart&&toEnd ? 'all day' : toEnd ? `after ${shortT(g.from)}` : fromStart ? `until ${shortT(g.to)}` : `${shortT(g.from)} to ${shortT(g.to)}`; return s[0].toUpperCase()+s.slice(1); }
+function screenOpenTimes(){ const W = wide(), t = now(), len = S.open.len; const days = Array.from({length:7},(_,i)=>addDays(startOfDay(t),i));
+  const rows = days.map((d,i) => { const p = dayPlan(d,len); const label = i===0?'Today':i===1?'Tomorrow':fmt(d,'EEEE, MMM d'); const cnt = p.busy.length===0?'Nothing booked':p.busy.length===1?'1 shoot':`${p.busy.length} shoots`;
+    const status = (i===0 && t > p.closes) ? 'Done for today.' : !p.fits.length ? `No ${len>=120?`${len/60}-hour`:`${len}-minute`} openings.` : null;
+    return `<div style="display:flex;flex-direction:column;gap:10px"><div class="row" style="justify-content:space-between;align-items:baseline"><span class="serif" style="font-size:20px">${esc(label)}</span><span class="sub sec">${cnt}</span></div>${timeline(p,len)}${status?`<div class="sub sec">${status}</div>`:`<div class="flow">${p.fits.map((g,k)=>{ const key = `${i}-${k}`; return `<button class="tchip pressable" data-act="pick-gap" data-key="${key}" data-day="${i}" data-text="${esc(gapPhrase(g,p).toLowerCase())}" aria-pressed="${!!S.open.picked[key]}">${esc(gapPhrase(g,p))}</button>`; }).join('')}</div>`}</div>`; });
+  const picked = Object.entries(S.open.picked).filter(([,v])=>v); let offer = '';
+  if (picked.length){ const byDay = {}; picked.forEach(([k,v]) => { const di = +k.split('-')[0]; (byDay[di] = byDay[di]||[]).push(v==='all day'?'any time':v); }); const lines = Object.keys(byDay).sort().map(di => `${di==0?'today':di==1?'tomorrow':fmt(days[di],'EEEE, MMM d')} ${byDay[di].join(' or ')}`); const body = lines.length===1?lines[0]:lines.slice(0,-1).join(', ')+', or '+lines.at(-1);
+    offer = `<div class="offer fade-in"><div class="sub" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">Hi! I'm free for a shoot ${esc(body)}. Let me know what works and I'll get it booked.</div><div class="row" style="gap:10px"><button class="primary pressable" data-act="noop">${ic('msg')}Send</button><button class="primary quiet pressable" data-act="copy-offer" data-text="Hi! I'm free for a shoot ${esc(body)}. Let me know what works and I'll get it booked.">${ic('copy')}Copy</button><button class="circ pressable" style="width:52px;height:52px;background:var(--surface);flex:none" data-act="clear-gaps" aria-label="Clear">${ic('x')}</button></div></div>`; }
+  return `<div class="page">${slimbar('Open times',{back:'Today'})}<div class="content" style="gap:26px;padding-top:16px"><div class="gut" style="display:flex;flex-direction:column;gap:6px"><div class="serif" style="font-size:${W?32:28}px;line-height:1.1">When you're free</div><div class="sub sec">8 AM to sunset, with 30 minutes kept clear around each shoot for the drive. Tap openings to offer them.</div></div><div class="gut"><div class="segc">${[60,90,120,180].map(v=>`<button data-act="open-len" data-v="${v}" aria-pressed="${len===v}">${v===60?'1 hr':v===90?'1.5 hr':v===120?'2 hr':'3 hr'}</button>`).join('')}</div></div><div class="gut grid" style="grid-template-columns:repeat(${W?2:1},1fr);gap:28px 32px">${rows.join('')}</div></div></div>${offer}`; }
+
+/* ===== Schedule ===== */
+function screenSchedule(){ const W = wide(), t = now(), sel = S.schedDay || startOfDay(t); const wk = []; const sun = addDays(sel, -sel.getDay()); for (let i=0;i<7;i++) wk.push(addDays(sun,i));
+  const shootsOn = d => visible().filter(j => j.start && sameDay(j.start,d)).sort((a,b)=>a.start-b.start); const list = shootsOn(sel);
+  const strip = `<div class="weekstrip gut"><button class="circ" style="width:32px;height:44px;background:none" data-act="sched-week" data-d="-7" aria-label="Previous week">${ic('chevl')}</button>${wk.map(d=>{ const n = shootsOn(d).length, isSel = sameDay(d,sel); return `<button class="day" data-act="sched-day" data-t="${d.getTime()}" aria-label="${esc(fmt(d,'EEEE MMMM d'))}, ${n} shoot${n===1?'':'s'}"><span class="cap2 ${sameDay(d,t)?'acc':'sec'}" style="font-weight:600">${fmt(d,'EEEEE')}</span><span class="n ${isSel?'sel':''}">${fmt(d,'d')}</span><span class="dotp" style="opacity:${n&&!isSel?1:0}"></span></button>`; }).join('')}<button class="circ" style="width:32px;height:44px;background:none" data-act="sched-week" data-d="7" aria-label="Next week">${ic('chev')}</button></div>`;
+  const rows = list.length ? list.map(j=>`<button class="row pressable" data-act="open-shoot" data-id="${j.id}" style="width:100%;padding:10px 0;border-bottom:1px solid var(--sep);align-items:flex-start"><span style="width:46px;height:46px;border-radius:11px;overflow:hidden;flex:none;background:var(--fill)">${heroImg(j,160,160)?`<img src="${heroImg(j,160,160)}" alt="" style="width:100%;height:100%;object-fit:cover">`:`<span style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%"><span class="acc" style="font-size:10px;font-weight:700">${fmt(j.start,'MMM').toUpperCase()}</span><span class="serif" style="font-size:19px">${fmt(j.start,'d')}</span></span>`}</span><span style="flex:1;min-width:0"><span class="serif" style="display:block;font-size:17px">${esc(j.street)}</span><span class="sub sec" style="display:block">${esc(timeRange(j.start,j.end))}, ${esc(j.town)}</span><span class="cap sec" style="display:block">${esc(j.agent)}, ${esc(j.pkg)}</span></span>${j.status==='delivered'?statusChip('Delivered','var(--green)'):''}</button>`).join('') : `<div style="display:flex;flex-direction:column;gap:14px"><div class="sub sec">Nothing booked ${sameDay(sel,t)?'today':fmt(sel,'EEEE')}.</div><button class="primary quiet pressable" data-act="push" data-route="opentimes" style="max-width:420px">${ic('clock')}Offer open times to an agent</button></div>`;
+  const p = dayPlan(sel, 90);
+  const mapSide = `<div class="mapbox" style="height:${W?420:200}px;border-radius:20px;position:relative"><svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:100%" aria-hidden="true">${[15,38,61,84].map(x=>`<path d="M${x} 0 V100" stroke="rgba(0,0,0,.1)" stroke-width="1.6"/>`).join('')}${[22,50,78].map(y=>`<path d="M0 ${y} H100" stroke="rgba(0,0,0,.1)" stroke-width="2"/>`).join('')}<path d="M0 74 Q 30 64 50 76 T 100 70 V100 H0Z" fill="${S.dark?'#17313d':'#bcd6e8'}"/></svg>${list.map((j,i)=>`<span class="pin" style="left:${20+i*(60/Math.max(1,list.length-1||1))}%;top:${30+(i%2)*25}%;width:26px;height:26px;font-size:12px;font-weight:700;background:${j.status==='booked'?'var(--acc)':'#555'}">${i+1}</span>`).join('')}</div>`;
+  const body = `<div style="display:flex;flex-direction:column;gap:16px"><div class="row" style="justify-content:space-between;align-items:baseline"><span class="serif" style="font-size:24px">${esc(sameDay(sel,t)?'Today':sameDay(sel,addDays(t,1))?'Tomorrow':fmt(sel,'EEEE, MMM d'))}</span><span class="sub sec">${list.length?`${list.length} shoot${list.length===1?'':'s'}, done by ${clockAMPM(list.at(-1).end||new Date(list.at(-1).start.getTime()+HOUR))}`:''}</span></div>${timeline(p,90)}${rows}</div>`;
+  return `<div class="page">${slimbar('Schedule',{back:'Today'})}<div class="content" style="gap:20px;padding-top:10px">${strip}<div class="gut">${W?`<div style="display:flex;gap:28px;align-items:flex-start"><div style="flex:1;min-width:0">${body}</div><div style="width:420px;flex:none">${mapSide}</div></div>`:`<div style="display:flex;flex-direction:column;gap:20px">${mapSide}${body}</div>`}</div></div></div>`; }
+
+/* ===== Upcoming check ===== */
+function screenCheck(){ const W = wide(), t = now(), lim = addDays(startOfDay(t),3); const list = upcoming().filter(j=>j.start<lim);
+  const cards = list.map(j => { const c = CHECKS[j.id]; const p = dayPlan(j.start,0); const gap = j.end ? Math.round((p.closes-j.end)/MIN) : null; return `<div class="card" style="gap:10px"><div class="row" style="justify-content:space-between"><div><div class="sub sec" style="font-weight:600">${esc(whenLine(j))}</div><div class="serif" style="font-size:20px">${esc(j.street)}</div><div class="sub sec">${esc(j.town)}, for ${esc(j.agent)}</div></div>${c?statusChip('Needs you','var(--orange)'):statusChip('Looks good','var(--green)')}</div>${c?c.issues.map(i=>`<div class="row" style="align-items:flex-start"><span class="cyan" style="width:22px;font-size:20px">${ic(i.kind==='wind'?'wind':'rain')}</span><div><div class="sub" style="font-weight:600">${esc(i.title)}</div><div class="fn sec">${esc(i.detail)}</div></div></div>`).join(''):`<div class="fn sec">${esc(j.hasVideo?'Clear sky and light wind in the forecast. ':'Dry and calm in the forecast. ')}Wraps ${gap!=null?esc(durLabel(Math.max(0,gap))):''} before sunset.</div>`}${c?.suggestion?`<div class="divider"></div><div class="row sub acc" style="font-weight:600;gap:6px">${ic('sunh')}Better day: ${esc(fmt(c.suggestion,'EEEE, MMM d'))} at ${esc(clockAMPM(c.suggestion))}</div>`:''}</div>`; }).join('');
+  return `<div class="page">${slimbar('Upcoming check',{back:'Today',trail:`<button class="sub" style="font-weight:600" data-act="noop">Check again</button>`})}<div class="content gut" style="padding-top:16px"><div class="sub sec">The rest of today and the next two days, checked for rain, wind on drone shoots, New Bedford airspace, bad agent emails and sunset.</div><div class="grid" style="grid-template-columns:repeat(${W?2:1},1fr);gap:14px">${cards}</div></div></div>`; }
+
+/* ===== Book a shoot (sheet) ===== */
+function newBooking(agent){ return {agent: agent||null, q:'', place:null, aq:'', pkg:null, day:0, time:null, stage:'form', problem:''}; }
+function screenBooking(){ const W = wide(), B = S.booking, t = now(); const title = slimbar('Book a shoot', {}).replace('<span>', `<button class="back" data-act="sheet-close" style="gap:0">${B.stage==='done'?'Done':'Cancel'}</button><span>`);
+  if (B.stage==='done'){ const s = B.booked; return `<div class="page">${title}<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:60px 30px;text-align:center"><span class="green" style="font-size:64px">${ic('checkc')}</span><div class="serif" style="font-size:34px">Booked</div><div class="sec">Order ${s.number}, ${esc(s.place)}, ${esc(fmt(s.when,'EEEE MMM d'))} at ${esc(clockAMPM(s.when))}.</div><div class="sub sec">${esc(s.agent.split(' ')[0])} is getting Aryeo's confirmation email.</div><button class="primary pressable" style="max-width:320px;margin-top:8px" data-act="sheet-close">Done</button></div></div>`; }
+  const step = (n, label, done) => `<div class="step"><span class="num ${done?'done':''}">${done?ic('check'):n}</span><span class="serif" style="font-size:20px">${label}</span></div>`;
+  const agents = B.q ? D.stats.filter(s => s.name.toLowerCase().includes(B.q.toLowerCase())).slice(0,8) : [...D.stats].sort((a,b)=>(b.last||0)-(a.last||0)).slice(0,8);
+  const st1 = `<div style="display:flex;flex-direction:column;gap:12px">${step(1,'Agent',!!B.agent)}${B.agent?`<div class="row" style="background:var(--surface);border-radius:16px;padding:14px">${mono(B.agent,44)}<div style="flex:1"><div class="head">${esc(B.agent)}</div><div class="sub sec">${statsFor(B.agent).delivered?`${statsFor(B.agent).delivered} shoots together`:'New client'}</div></div><button class="sub acc" style="font-weight:600" data-act="bk-set" data-k="agent" data-v="">Change</button></div>`:`<div class="field">${ic('person')}<input placeholder="Name, or just part of it" value="${esc(B.q)}" data-input="bk-q"></div>${agents.length?`<div class="flow">${agents.map(s=>`<button class="chip pressable" data-act="bk-set" data-k="agent" data-v="${esc(s.name)}" style="padding:6px 12px 6px 6px;font-weight:500">${mono(s.name,24)}${esc(s.name)}</button>`).join('')}</div>`:`<div class="sub sec">No agent matches “${esc(B.q)}”.</div>`}`}</div>`;
+  const places = B.aq.trim().length>=4 ? [[`${B.aq.replace(/\D.*$/,'')||'9'} ${B.aq.replace(/^\d+\s*/,'').replace(/\b\w/g,c=>c.toUpperCase())||'Radcliffe Ln'}`,'Dartmouth'],[`${B.aq.replace(/\D.*$/,'')||'9'} ${(B.aq.replace(/^\d+\s*/,'')||'Radcliffe').replace(/\b\w/g,c=>c.toUpperCase())} St`,'New Bedford']] : [];
+  const st2 = `<div style="display:flex;flex-direction:column;gap:12px">${step(2,'Address',!!B.place)}${B.place?`<div style="border-radius:16px;overflow:hidden"><div class="mapbox" style="height:140px;position:relative"><svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:100%" aria-hidden="true">${[20,50,80].map(x=>`<path d="M${x} 0 V100" stroke="rgba(0,0,0,.12)" stroke-width="2"/>`).join('')}<path d="M0 55 H100" stroke="rgba(0,0,0,.12)" stroke-width="3"/></svg><span class="pin" style="left:50%;top:50%">${ic('cam')}</span></div><div class="row" style="background:var(--surface);padding:14px"><div style="flex:1"><div class="serif head">${esc(B.place[0])}</div><div class="sub sec">${esc(B.place[1])}, MA 02747</div></div><button class="sub acc" style="font-weight:600" data-act="bk-set" data-k="place" data-v="">Change</button></div></div>`:`<div class="field">${ic('pin')}<input placeholder="Shorthand is fine: 9 Radcliffe Ln Dartmouth" value="${esc(B.aq)}" data-input="bk-aq"></div>${places.map(p=>`<button class="row pressable" data-act="bk-place" data-v="${esc(p.join('|'))}" style="padding:8px 0;width:100%"><span class="acc" style="font-size:22px">${ic('pin')}</span><span><span class="sub" style="display:block;font-weight:600">${esc(p[0])}</span><span class="cap sec" style="display:block">${esc(p[1])}, MA</span></span></button>`).join('')}`}</div>`;
+  const st3 = `<div style="display:flex;flex-direction:column;gap:12px">${step(3,'Package',!!B.pkg)}<div>${PACKAGES.map((p,i)=>`<button class="row" data-act="bk-set" data-k="pkg" data-v="${i}" style="width:100%;padding:10px 0;${i?'border-top:1px solid var(--sep);margin-left:36px;width:calc(100% - 36px)':''}"><span style="font-size:20px;${B.pkg===i?'color:var(--acc)':'color:var(--ter)'};${i?'margin-left:-36px':''}">${ic(B.pkg===i?'checkc':'circle')}</span><span style="flex:1"><span class="sub" style="display:block;${B.pkg===i?'font-weight:600':''}">${esc(p.title)}</span><span class="cap sec" style="display:block">${esc(durLabel(p.minutes))}</span></span><span class="sub tnum" style="font-weight:600">${money(p.price)}</span></button>`).join('')}</div></div>`;
+  const len = B.pkg!=null ? PACKAGES[B.pkg].minutes : 90; const days = Array.from({length:14},(_,i)=>addDays(startOfDay(t),i)); const p = dayPlan(days[B.day], len); const slots = []; p.fits.forEach(g => { let s = new Date(Math.ceil(g.from.getTime()/(30*MIN))*30*MIN); while (s.getTime()+len*MIN <= g.to.getTime()){ slots.push(new Date(s)); s = new Date(s.getTime()+30*MIN); } });
+  const st4 = `<div style="display:flex;flex-direction:column;gap:12px">${step(4,'When',!!B.time)}<div class="rail" style="margin:0 calc(-1 * var(--gut))"><div class="strip" style="gap:8px">${days.map((d,i)=>`<button class="daychip pressable" data-act="bk-day" data-v="${i}" aria-pressed="${B.day===i}"><span class="w">${fmt(d,'EEE')}</span><span class="d serif">${fmt(d,'d')}</span></button>`).join('')}</div></div>${timeline(p,len)}${slots.length?`<div class="flow">${slots.map(s=>`<button class="tchip pressable" data-act="bk-time" data-v="${s.getTime()}" aria-pressed="${B.time===s.getTime()}">${esc(shortT(s))}</button>`).join('')}</div>`:`<div class="sub sec">No open ${esc(durLabel(len))} slot that day. Try another day.</div>`}</div>`;
+  const ready = B.agent && B.place && B.pkg!=null && B.time;
+  const summary = `<div style="display:flex;flex-direction:column;gap:12px;max-width:${W?520:9999}px">${B.problem?`<div class="row orange sub" style="gap:6px">${ic('warn')}${esc(B.problem)}</div>`:''}${B.stage==='confirm'?`<div class="card"><div class="sub" style="font-weight:600">Book ${esc(B.agent)} for ${esc(PACKAGES[B.pkg].title)} (${money(PACKAGES[B.pkg].price)}) at ${esc(B.place[0])}, ${esc(B.place[1])}, ${esc(fmt(new Date(B.time),'EEEE MMM d'))} at ${esc(clockAMPM(new Date(B.time)))}?</div><div class="row" style="gap:10px"><button class="primary pressable" data-act="bk-bookit">Book it</button><button class="primary quiet pressable" data-act="bk-set" data-k="stage" data-v="form">Not yet</button></div></div>`:`<button class="primary pressable" data-act="bk-review" ${ready?'':'disabled'}>${ready?'Review and book':'Pick all four to book'}</button>`}<div class="cap sec">Aryeo emails the agent its usual confirmation once it's booked. In this demo nothing is sent anywhere.</div></div>`;
+  return `<div class="page">${title}<div class="content" style="padding-top:18px;padding-bottom:40px;gap:30px"><div class="gut" style="display:flex;flex-direction:column;gap:30px">${W?`<div style="display:flex;gap:32px;align-items:flex-start"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:30px">${st1}${st2}</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:30px">${st3}${st4}</div></div>`:st1+st2+st3+st4}${summary}</div></div></div>`; }
+
+/* ===== Gallery / slideshow ===== */
+function galleryHTML(){ const g = S.gallery, j = jobById(g.id); const items = []; for (let i=0;i<j.photos;i++) items.push(houseArt(j.seed+i*13, i===0?j.kind:(i%4===1?'interior':i%4===2?'twilight':i%4===3?'golden':'front'), 1200, 900)); const i = Math.max(0, Math.min(items.length-1, g.i));
+  const cover = g.present && g.cover ? `<div class="covercard"><div class="st serif">${esc(j.street)}</div><div class="sb">${esc(j.town)}, MA</div><div class="cr">Photographed by Horizon Home Media</div></div>` : '';
+  return `<div class="gallery"><div class="stage"><img src="${items[i]}" alt="Photo ${i+1}" style="${g.present?'transform:scale(1.06);transition:transform 6s linear':''}">${cover}</div>${g.present&&!g.chrome?'':`<div class="bar"><button class="cb" data-act="gallery-close" aria-label="Close">${ic('x')}</button><span class="mid">${i+1} of ${items.length}</span><button class="cb" data-act="gallery-present" aria-label="${g.present?'Stop slideshow':'Present'}">${ic(g.present?'x':'play','f')}</button><button class="cb" data-act="noop" aria-label="Save to Photos">${ic('dl')}</button></div><div class="strip">${items.map((s,k)=>`<img src="${s}" alt="" class="${k===i?'cur':''}" data-act="gallery-go" data-i="${k}">`).join('')}</div>`}<button data-act="gallery-prev" aria-label="Previous" style="position:absolute;left:0;top:15%;bottom:15%;width:30%;cursor:w-resize"></button><button data-act="gallery-next" aria-label="Next" style="position:absolute;right:0;top:15%;bottom:15%;width:30%;cursor:e-resize"></button></div>`; }
+</script>
+<script>
+/* ===== device poses ===== */
+const POSES = { closed:{w:466,h:678}, open:{w:626,h:890}, half:{w:890,h:626,band:{top:299,bottom:327}} };
+const isDark = () => S.dark!==null ? S.dark : (document.documentElement.dataset.theme==='dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches));
+let toastTimer = null, toastText = '';
+function toast(t){ toastText = t; clearTimeout(toastTimer); const el = $('#toast'); if (el) el.remove(); const n = document.createElement('div'); n.className='toast'; n.id='toast'; n.textContent = t; $('#app').appendChild(n); toastTimer = setTimeout(()=>{ n.remove(); }, 1800); }
+function layout(){ const p = POSES[S.pose], dev = $('#device'), sc = $('#scaler'), st = $('#stage'); const W = p.w+28, H = p.h+28; const availW = st.clientWidth - 24, availH = st.clientHeight - 24; const scale = Math.min(availW/W, availH/H, 1); sc.style.width = W*scale+'px'; sc.style.height = H*scale+'px'; dev.style.transform = `scale(${scale})`; dev.className = 'device '+S.pose; $('#screen').style.width = p.w+'px'; $('#screen').style.height = p.h+'px'; S.scale = scale; }
+const scrollKeys = {}; const routeKey = () => S.tab + ':' + JSON.stringify(route()||'') + ':' + (S.sheet||'');
+function render(){ const app = $('#app'); const key = routeKey(); const prev = app.querySelector('.page'); if (prev && app.dataset.key===key) scrollKeys[key] = prev.scrollTop;
+  app.className = 'app' + (isDark()?' dark':'') + (wide()?' wide':''); const r = route(); const p = POSES[S.pose]; let html = '';
+  if (!r) html = ({today:screenToday, listings:screenListings, customers:screenCustomers, money:screenMoney, ask:screenAsk, settings:screenSettings})[S.tab]();
+  else if (r.kind==='shoot') html = screenShoot(jobById(r.id), S.pose==='half' ? p.band : null); else if (r.kind==='agent') html = screenAgent(r.name); else if (r.kind==='opentimes') html = screenOpenTimes(); else if (r.kind==='schedule') html = screenSchedule(); else if (r.kind==='check') html = screenCheck();
+  const onphoto = r && r.kind==='shoot' && heroImg(jobById(r.id)) && S.pose!=='half' && !S.sheet && !S.gallery;
+  const tabs = [['today','Today','sunh'],['listings','Listings','photos'],['customers','Customers','people'],['money','Money','dollar'],['ask','Ask','sparkles'],['settings','Settings','gear']];
+  const badge = flags().length + Object.keys(CHECKS).length;
+  const pill = `<nav class="pill" aria-label="Tabs">${tabs.map(([k,l,i])=>`<button class="tab" data-act="tab" data-tab="${k}" aria-current="${S.tab===k?'page':'false'}" aria-label="${l}">${ic(i)}<span>${l}</span>${k==='today'&&badge?`<span class="badge">${badge}</span>`:''}</button>`).join('')}</nav>`;
+  const status = `<div class="status ${onphoto?'onphoto':''}"><span class="tnum">${esc(fmt(now(),'h:mm'))}</span><span class="right"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M2 9a14 14 0 0 1 20 0M5.5 12.5a9 9 0 0 1 13 0M9 16a4.5 4.5 0 0 1 6 0M12 19.5v.1"/></svg><span class="batt"></span></span></div>`;
+  const sheet = S.sheet==='booking' ? `<div class="sheet"><div class="panel app-inner" style="position:relative">${screenBooking()}</div></div>` : '';
+  const menu = S.menu ? `<div class="cmask" data-act="menu-close"></div><div class="menu fade-in" style="left:${S.menu.x}px;top:${S.menu.y}px"><button data-act="menu-cover" data-id="${S.menu.id}" data-i="${S.menu.i}">${S.menu.isCover && S.menu.i!==0 ? `Use Aryeo's first photo ${ic('undo')}` : `Use as cover photo ${ic('checkc')}`}</button><button data-act="gallery" data-id="${S.menu.id}" data-i="${S.menu.i}">View ${ic('expand')}</button></div>` : '';
+  app.innerHTML = status + html + pill + sheet + (S.gallery ? galleryHTML() : '') + menu + (S.pose==='half' ? `<div class="hinge" style="top:${p.band.top}px;height:${p.band.bottom-p.band.top}px"></div>` : S.pose==='open' ? '<div class="crease"></div>' : '');
+  app.dataset.key = key; const pg = app.querySelector('.page'); if (pg && scrollKeys[key]) pg.scrollTop = scrollKeys[key];
+  if (S.focus){ const inp = app.querySelector(`[data-input="${S.focus}"]`); if (inp){ inp.focus(); const v = inp.value; inp.setSelectionRange(v.length, v.length); } }
+  if (toastText && !$('#toast') && toastTimer) {} }
+function push(r){ S.nav[S.tab].push(r); S.showAllPhotos = false; render(); }
+function pop(){ S.nav[S.tab].pop(); render(); }
+
+/* ===== Ask typing ===== */
+let typer = null;
+function ask(q){ if (S.askThinking) return; S.askTurns.push({q, a:null}); S.askDraft=''; S.askThinking = true; S.focus = null; render(); const full = askAnswer(q); clearTimeout(typer);
+  typer = setTimeout(() => { const turn = S.askTurns.at(-1); turn.a = ''; render(); let i = 0; const step = () => { i = Math.min(full.length, i + 3); turn.a = full.slice(0,i); const els = $('#app').querySelectorAll('.answer'); const el = els[els.length-1]; if (el) el.innerHTML = mdLite(turn.a); const pg = $('#app').querySelector('.page'); if (pg) pg.scrollTop = pg.scrollHeight; if (i < full.length) typer = setTimeout(step, 18); else { S.askThinking = false; render(); } }; step(); }, 900); }
+
+/* ===== slideshow ===== */
+let slideTimer = null;
+function slideshow(){ clearTimeout(slideTimer); const g = S.gallery; if (!g || !g.present) return; const j = jobById(g.id); slideTimer = setTimeout(() => { if (!S.gallery || !S.gallery.present) return; if (S.gallery.cover) S.gallery.cover = false; else S.gallery.i = (S.gallery.i + 1) % j.photos; render(); slideshow(); }, g.cover ? 4000 : 5000); }
+
+/* ===== events ===== */
+document.addEventListener('click', e => {
+  const pb = e.target.closest('[data-pose]'); if (pb){ S.pose = pb.dataset.pose; document.querySelectorAll('[data-pose]').forEach(b=>b.setAttribute('aria-pressed', b===pb)); layout(); render(); return; }
+  const lb = e.target.closest('[data-look]'); if (lb){ S.dark = lb.dataset.look==='system'?null:lb.dataset.look==='dark'; document.querySelectorAll('[data-look]').forEach(b=>b.setAttribute('aria-pressed', b===lb)); render(); return; }
+  const el = e.target.closest('[data-act]'); if (!el || !$('#app').contains(el)) return; const a = el.dataset.act, d = el.dataset; S.focus = null;
+  if (S.menu && a!=='menu-cover' && a!=='gallery'){ S.menu = null; if (a==='menu-close'){ render(); return; } }
+  switch (a) {
+    case 'tab': if (S.tab===d.tab) S.nav[d.tab] = []; S.tab = d.tab; render(); break;
+    case 'open-shoot': if (S.sheet) break; push({kind:'shoot', id:d.id}); break;
+    case 'open-agent': push({kind:'agent', name:d.n}); break;
+    case 'push': push({kind:d.route}); break;
+    case 'back': pop(); break;
+    case 'book': S.booking = newBooking(d.agent||null); S.sheet = 'booking'; render(); break;
+    case 'sheet-close': S.sheet = null; S.booking = null; render(); break;
+    case 'bk-set': { const B = S.booking, k = d.k; if (k==='agent') { B.agent = d.v||null; B.q=''; } else if (k==='place') B.place = null; else if (k==='pkg') { B.pkg = +d.v; B.time = null; } else if (k==='stage') B.stage = d.v; B.problem=''; render(); break; }
+    case 'bk-place': { const [s,t] = d.v.split('|'); S.booking.place = [s,t]; S.booking.aq=''; render(); break; }
+    case 'bk-day': S.booking.day = +d.v; S.booking.time = null; render(); break;
+    case 'bk-time': S.booking.time = +d.v; S.booking.problem=''; render(); break;
+    case 'bk-review': { const B = S.booking, start = new Date(B.time), len = PACKAGES[B.pkg].minutes, end = new Date(B.time + len*MIN); const clash = visible().find(j => j.start && j.status!=='stale' && sameDay(j.start,start) && (j.start - 30*MIN) < end && ((j.end||new Date(j.start.getTime()+HOUR)).getTime() + 30*MIN) > start); if (clash) { B.problem = `That's too close to ${clash.street} at ${clockAMPM(clash.start)}. I left 30 minutes either side for driving.`; } else B.stage = 'confirm'; render(); break; }
+    case 'bk-bookit': { const B = S.booking, pkg = PACKAGES[B.pkg], start = new Date(B.time); const num = Math.max(...D.jobs.map(j=>j.number))+1; const town = TOWNS.find(t=>t[0]===B.place[1])||TOWNS[0]; D.jobs.unshift({id:'o'+num, number:num, street:B.place[0], town:B.place[1], lat:town[1], lon:town[2], agent:B.agent, start, end:new Date(B.time+pkg.minutes*MIN), status:'booked', pkg:pkg.title, items:[{title:pkg.title, amount:pkg.price}], total:pkg.price, photos:0, video:null, planDelivered:null, created:now(), notes:'', seed:num, kind:'front', cover:0, hasVideo:isVideo(pkg.title), hasPlan:false, flag:null}); statsFor(B.agent).jobs.push(D.jobs[0]); B.booked = {number:num, place:`${B.place[0]}, ${B.place[1]}`, when:start, agent:B.agent}; B.stage='done'; render(); break; }
+    case 'lview': S.listingsView = d.v; render(); break;
+    case 'mapyear': S.mapYear = d.v==='1'; S.mapTown = null; render(); break;
+    case 'maptown': S.mapTown = (S.mapTown===d.t || !d.t) ? null : d.t; render(); break;
+    case 'mapzoom': { if (!d.x){ S.mapZoom = null; } else { const z = S.mapZoom; const k = z ? z.k*2 : 2.2; const mw = POSES[S.pose].w - (wide()?98:78), mh = POSES[S.pose].h - 200; const ux = z ? z.x + (+d.x - mw/2)/z.k : +d.x, uy = z ? z.y + (+d.y - mh/2)/z.k : +d.y; S.mapZoom = {x:ux, y:uy, k}; } S.mapTown = null; render(); break; }
+    case 'more-past': S.pastCount += 48; render(); break;
+    case 'sort': S.sort = S.sort===d.k ? '-'+d.k : d.k; render(); break;
+    case 'toggle': S[d.k] = !S[d.k]; render(); break;
+    case 'appearance': S.dark = d.v==='system'?null:d.v==='dark'; document.querySelectorAll('[data-look]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.look===d.v)); render(); break;
+    case 'savekeys': S.savedKeys = true; render(); break;
+    case 'testclaude': S.claudeTest = 'Asking…'; render(); setTimeout(()=>{ S.claudeTest = 'Claude says: Connected.'; render(); }, 900); break;
+    case 'notneeded': { const j = jobById(d.id); j.flag = null; render(); toast('Cleared. It won\'t be flagged again.'); break; }
+    case 'onmyway': toast('On the phone this opens Messages with a drafted text.'); break;
+    case 'ask': ask(d.q); break;
+    case 'ask-send': if (S.askDraft.trim()) ask(S.askDraft.trim()); break;
+    case 'ask-new': clearTimeout(typer); S.askTurns = []; S.askThinking = false; render(); break;
+    case 'open-len': S.open.len = +d.v; Object.keys(S.open.picked).forEach(k => { const t = now(); const di = +k.split('-')[0]; const p = dayPlan(addDays(startOfDay(t),di), S.open.len); if (!p.fits[+k.split('-')[1]]) delete S.open.picked[k]; }); render(); break;
+    case 'pick-gap': if (S.open.picked[d.key]) delete S.open.picked[d.key]; else S.open.picked[d.key] = d.text; render(); break;
+    case 'clear-gaps': S.open.picked = {}; render(); break;
+    case 'copy-offer': { const t = d.text; (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(t) : Promise.reject()).then(()=>toast('Copied.'), ()=>toast('Copy isn\'t allowed here; on the phone it is.')); break; }
+    case 'sched-week': S.schedDay = addDays(S.schedDay||startOfDay(now()), +d.d); render(); break;
+    case 'sched-day': S.schedDay = new Date(+d.t); render(); break;
+    case 'gallery': S.gallery = {id:d.id, i:+d.i, present:false, chrome:true}; S.menu = null; render(); break;
+    case 'present': S.gallery = {id:d.id, i:0, present:true, cover:true, chrome:false}; render(); slideshow(); break;
+    case 'gallery-close': S.gallery = null; clearTimeout(slideTimer); render(); break;
+    case 'gallery-go': S.gallery.i = +d.i; render(); break;
+    case 'gallery-prev': case 'gallery-next': { const g = S.gallery; if (g.present){ g.present=false; g.chrome=true; clearTimeout(slideTimer); render(); break; } const n = jobById(g.id).photos; g.i = (g.i + (a==='gallery-next'?1:-1) + n) % n; render(); break; }
+    case 'gallery-present': { const g = S.gallery; g.present = !g.present; g.chrome = !g.present; g.cover = g.present; render(); slideshow(); break; }
+    case 'menu-cover': { const j = jobById(d.id); j.cover = (S.menu && S.menu.isCover && +d.i!==0) ? 0 : +d.i; S.menu = null; render(); toast(j.cover ? 'Cover photo changed on every card.' : 'Back to Aryeo\'s first photo.'); break; }
+    case 'menu-close': render(); break;
+    case 'noop': default: toast('On the phone this leaves the app: Maps, Messages or Aryeo.');
+  }
+});
+document.addEventListener('input', e => { const k = e.target.dataset.input; if (!k) return; S.focus = k; const v = e.target.value;
+  if (k==='search') { S.search = v; render(); } else if (k==='cust') { S.custSearch = v; render(); } else if (k==='ask') { S.askDraft = v; const b = $('#app').querySelector('.send'); if (b) b.disabled = !v.trim() || S.askThinking; }
+  else if (k==='bk-q') { S.booking.q = v; render(); } else if (k==='bk-aq') { S.booking.aq = v; render(); } });
+document.addEventListener('keydown', e => { if (e.key==='Enter' && e.target.dataset.input==='ask' && S.askDraft.trim()) ask(S.askDraft.trim()); if (e.key==='Escape'){ if (S.gallery){ S.gallery=null; clearTimeout(slideTimer); render(); } else if (S.menu){ S.menu=null; render(); } } });
+function openMenu(el, x, y){ const app = $('#app').getBoundingClientRect(); const j = jobById(el.dataset.id); S.menu = {id:el.dataset.id, i:+el.dataset.i, isCover:(j.cover||0)===+el.dataset.i, x:Math.min((x-app.left)/S.scale, POSES[S.pose].w-240), y:Math.min((y-app.top)/S.scale, POSES[S.pose].h-120)}; render(); }
+document.addEventListener('contextmenu', e => { const el = e.target.closest('[data-menu]'); if (!el) return; e.preventDefault(); openMenu(el, e.clientX, e.clientY); });
+let pressT = null; document.addEventListener('pointerdown', e => { const el = e.target.closest('[data-menu]'); if (!el || e.button!==0) return; const x = e.clientX, y = e.clientY; pressT = setTimeout(()=>{ pressT = null; openMenu(el, x, y); el.dataset.held = '1'; }, 480); });
+['pointerup','pointercancel','pointermove'].forEach(ev => document.addEventListener(ev, e => { if (ev==='pointermove' && pressT && Math.hypot(e.movementX, e.movementY) < 6) return; clearTimeout(pressT); pressT = null; }));
+document.addEventListener('click', e => { const el = e.target.closest('[data-menu]'); if (el && el.dataset.held){ delete el.dataset.held; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => render());
+new MutationObserver(() => render()).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+window.addEventListener('resize', () => { layout(); });
+layout(); render(); setInterval(() => { const s = $('#app .status .tnum'); if (s) s.textContent = fmt(now(),'h:mm'); }, 15000);
+</script>

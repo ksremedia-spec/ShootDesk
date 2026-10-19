@@ -138,6 +138,31 @@ press them while you take screenshots.
 6. Haptics can't be felt in the simulator — "simulated, not checked on a real phone".
 7. Update the Status section of `README.md` and this file. Keep `CLAUDE.md` "Known quirks" current.
 
+## The HTML demo (Oct 19 2026): `Demo/ShootDeskDuoDemo.html`
+
+Kyle asked for "a working demo in HTML that runs an iPhone Duo" to show people. It is a clickable replica of the
+app inside a drawn Duo, not the app: Closed / Half-open / Open poses, light and dark, every tab, the shoot page, agent
+pages, Book a shoot, Open times, Schedule, the Upcoming check page, the photo gallery and slideshow, Ask with canned
+answers that type out. Published privately at https://claude.ai/artifact/S9CCMk9LHUPk9yraNB8SjL (Kyle shares it from
+the page's Share menu); the same file is in the repo and opens in any browser.
+- Built from the Swift screens, not from memory: nine readers extracted each screen's exact copy, layout rules and
+  folded/open differences (the specs are not in the repo; redo the read if you rebuild). Layout rules it follows:
+  18/28 gutters, serif addresses, rails that stop at the tab pill, two columns when open, photo above the hinge in
+  the half-open pose, the 30-minute driving pad in Open times and Book a shoot, the agent "usually books" sentence.
+- Everything in it is made up: fictional agents (Dana Oliveira, Marcus Bell, ...), invented house numbers on real
+  South Coast road names, drawn house "photos" (canvas, no real listings), Stripe-shaped numbers. No keys, no network.
+  Keep it that way; it is public once shared.
+- Known differences from the app, on purpose: no map tiles (a drawn stand-in with the app's town bubbles and merge
+  rule; a tap on a merged bubble zooms instead of fitting the camera), the open-pose Ask sidebar is 270pt wide (the
+  app's 360 leaves no room on a 626pt screen once the pill is counted), Directions / Call / Text / Aryeo show a note
+  instead of leaving the page, sunset is computed for Dartmouth in the viewer's own time zone (right for Kyle, off
+  elsewhere), and the "today" demo shoots move to tomorrow after 3 PM so the Today tab always has a next shoot.
+- Checked Oct 19 in the sandbox's Chromium (28 screenshots, no console errors, no sideways scroll at phone width).
+  Not checked in Safari or on a phone. The page follows the viewer's light/dark setting; the app inside has its own
+  switch (the page's "Match page / Light / Dark" and Settings → Appearance are the same control).
+- To change it: the source is the single HTML file (styles, then markup, then four script blocks: helpers and data,
+  screens, more screens, the shell). Republish with the Artifact tool using the same file path to keep the link.
+
 ## Security rules (do not bend these)
 
 - Keys (Aryeo, Claude, Stripe restricted key) are typed by Kyle into Settings and live only in the Keychain.
