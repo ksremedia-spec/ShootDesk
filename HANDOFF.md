@@ -1,7 +1,9 @@
 # ShootDesk handoff — Saturday, Oct 17 2026 (updated 11 PM: first cloud build is green)
 
 ShootDesk is Kyle Silva's personal iPhone app (Horizon Home Media, real-estate photography) that replaces
-Aryeo Go, built for the iPhone Duo. Project: `~/Documents/ShootDesk`. Read `CLAUDE.md` for the rules and the
+Aryeo Go, built for the iPhone Duo. Project on the Mac: `~/Documents/ShootDesk-github`, a clone of GitHub made Oct 19.
+(The older `~/Documents/ShootDesk` is NOT a git clone of the repo; it may hold work that never reached GitHub. Not yet
+compared; ask Kyle before touching it.) Read `CLAUDE.md` for the rules and the
 design system; `README.md` says what the app does. This file is the state of play and the to-do list.
 
 Kyle is not a programmer. Plain English. Label everything as verified / assumed / unknown. Change only what
@@ -97,17 +99,14 @@ open the repo's Actions tab → green check or red X.
 
 ## Build and run on the Mac (needs Xcode 27.1)
 
-Start here (one paste in Terminal: gets the latest from GitHub, makes the Xcode project, opens it in Xcode):
+Start here (a local session in the Claude desktop app runs these itself; Kyle doesn't use Terminal):
 
-    cd ~/Documents/ShootDesk && git pull && (command -v xcodegen >/dev/null || brew install xcodegen) && xcodegen && open ShootDesk.xcodeproj
+    cd ~/Documents/ShootDesk-github && git pull && (command -v xcodegen >/dev/null || brew install xcodegen) && xcodegen
 
-Then pick the iPhone Duo simulator at the top of Xcode and press Run (⌘R). Unknown as of Oct 19: whether
-`~/Documents/ShootDesk` on the Mac is a clone of github.com/ksremedia-spec/ShootDesk. If `git pull` says "not a git
-repository" or "no tracking information", clone fresh beside it instead of touching the old folder
-(`git clone https://github.com/ksremedia-spec/ShootDesk.git ~/Documents/ShootDesk-github`) and run the same line
-there with that folder name. If it says local changes would be overwritten, stop and read the message; don't force it.
-Oct 19: a cloud session couldn't control the Mac (no computer-use link). A session started on the Mac itself
-(the Claude desktop app with Computer use on, or `claude remote-control` in the project folder) can drive Xcode.
+Then build and run on the iPhone Duo simulator (`xcodebuild ... -destination 'platform=iOS Simulator,name=iPhone Duo'`,
+or ask the desktop app's iOS Simulator pane to run it). If `git pull` says local changes would be overwritten, stop and
+read the message; don't force it. Oct 19 setup notes: Claude Code CLI 2.1.303 is installed at `~/.local/bin/claude`
+(not on PATH unless Kyle added it); a cloud session can't control the Mac, a local desktop-app session can.
 
 The Xcode project file isn't committed (see .gitignore); `project.yml` is the recipe. On a fresh clone, or whenever
 source files are added or removed, run `xcodegen` in the project folder first (`brew install xcodegen` once).

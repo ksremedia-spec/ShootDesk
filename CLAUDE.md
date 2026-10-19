@@ -2,6 +2,8 @@
 
 Kyle is not a programmer. Explain in plain English, label things as verified, assumed or unknown, and change only what he asks for. Suggest other improvements; don't ship them unasked. Never call something "tested" when it only ran in the simulator.
 
+Kyle works in the Claude desktop app (Code tab, local session, with computer use and the iOS Simulator pane), not in Terminal. Run commands yourself; don't hand him Terminal steps unless there's no other way.
+
 Avoid fix loops. If the same error survives two attempts, stop and explain.
 
 Current state, unbuilt changes and the verification list live in `HANDOFF.md`. Read it at the start of a session and keep it current as you go.
