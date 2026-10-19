@@ -14,7 +14,7 @@ on a real phone". He hates fix loops.
 ## Where things stand
 
 Until Oct 17 the app was built and checked screen by screen in the iPhone Duo simulator (Xcode 27.1, iOS 27.1),
-folded and open, light and dark. Nothing has run on a real phone yet; Kyle's Duo arrives around Oct 31.
+folded and open, light and dark. Nothing has run on a real phone yet; Kyle will have his Duo in hand on launch day (told Oct 19; date not given).
 
 On Oct 17 a batch of changes was written WITHOUT a Mac available. That night they compiled for the first time,
 on GitHub's cloud Mac (Actions runs #1 and #2 both green; full log of #2, commit af08ecf, read line by line:
@@ -64,6 +64,49 @@ Duo simulator `1DBDC341-4076-48E1-9445-FC21C9F1AF1B` (the one with Kyle's keys a
    (Device Hub access wasn't available; those poses don't use the changed code), and anything on a real phone.
    Unknown: whether the real Duo ever reports a side-to-side fold, which is the only case the old layout still runs.
 6. Haptics: can't be felt in the simulator; not checked on a real phone.
+
+## Oct 19 full simulator pass (checked in the simulator, not on a real phone)
+
+Kyle asked for everything left to be checked before the phone arrives. Same Duo simulator, his real data, the
+current build. Every screen in all three poses (Closed, Partially Open, Open); every tab in dark and light
+(the app's own Appearance setting was switched to Light for this and set back to Dark afterwards).
+
+PASS: Today; Schedule; Open times (the driving-gap maths checked by hand against the Oct 20 and Oct 22 shoots);
+Upcoming check (the wind warning only on the shoot with drone work); Listings gallery and map (towns split as you
+zoom; a town card opens its shoots); the shoot page with its hourly forecast chips, photo viewer, swipe between
+photos, slideshow (stops on the photo it reached) and Listing kit (town record, plus "Write it" drafted an MLS
+description with Claude); Customers (list folded, table open) and the agent page; Money (loaded from Stripe);
+Ask (one real question, answered from live data); Settings. Book a shoot opens and draws in every pose.
+Leftovers from the first pass: the agent page "Shoots" row scrolled to its end stops at the tab pill (Aimee
+Rose, last card Wildwood Pl fully visible); the cover photo shows on the Listings card (129 Huttleston Ave, set
+and then put back to Aryeo's first photo, `coverChoices` empty again); the half-open shoot page draws the normal
+page.
+
+Found, not fixed (ask Kyle):
+- Cover badge (known): after "Use as cover photo" the "Cover" label stays on the old photo until the page is
+  reopened. Seen again; the hero, the Listings card and the saved choice are all right.
+- Ask, Open and Partially Open: for the first 10 to 15 seconds after the app opens, the summary tiles say
+  "Money: Not connected" and "Missing: All delivered" before the real numbers arrive ($4,545; 1 missing). Reads
+  as wrong rather than loading.
+- Listings, when it opens straight onto the map (it remembers the last view): "0 shoots in 0 towns" and a blank
+  map for about 15 seconds, then 692 shoots in 85 towns. Same kind of thing.
+- Listing kit uses a fixed 16 pt side margin (`ListingKitView.swift`, `.padding(16)`) instead of `Gutter.of`,
+  so on the open Duo its text sits nearer the edge than other screens. Cosmetic.
+- Open map: two town bubbles overlap at the zoomed-out view (the 95 half under the 303). Cosmetic.
+
+Not checked, and why:
+- Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
+  screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.
+- Background refresh: still needs developer mode on the Mac (`DevToolsSecurity -status` says disabled; Kyle's
+  password).
+- Text fields (search, Ask's box, the booking address): automation can't type reliably; by hand.
+- "Not needed" on the missing-deliverable flag: it changes Kyle's saved state, so left alone.
+- Directions, Call, Text, On my way, Share, Save to Photos: they hand off to other apps or save files.
+- Everything that needs the real phone (see "Not checked anywhere yet").
+
+Not bugs, for the record: "Booked $0" for brand-new clients (Booked counts delivered orders, like the dashboard);
+the black dot top right in the slideshow is the simulated camera hole; "Store" in the Listing kit is the town's
+own classification; `shootdesk://shoot/<id>` needs Aryeo's long order id, not the order number.
 
 Oct 19 setup notes:
 - Kyle's Mac has three Xcodes. `/Applications/Xcode.app` is 27.0 and CANNOT build the app (no `onHingeChange` /
@@ -158,7 +201,7 @@ session with computer use can press them itself (verified Oct 19).
 
 ## Verify, in this order (take a screenshot for each)
 
-Oct 19 status: 0 retired; 1–3 and 6 done (see "Oct 19 Mac session: verify results" above); 4 waits on developer mode;
+Oct 19 status: 0 retired; 1–3 and 6 done (see "Oct 19 Mac session: verify results" and "Oct 19 full simulator pass" above); 4 waits on developer mode;
 5 fixed in the simulator Oct 19 (shoot page was black when half-open; now shows the normal page); 7 is this update (README status not yet updated).
 
 0. Retired Oct 19 with the GitHub build (was: look at the cloud screenshots of every tab; done Oct 17, all fine).

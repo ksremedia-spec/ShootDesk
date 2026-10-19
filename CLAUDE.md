@@ -48,3 +48,4 @@ Current state, unbuilt changes and the verification list live in `HANDOFF.md`. R
 
 - Clicks from automation on toolbar buttons in the Duo's side column are unreliable (sometimes two taps, sometimes none). Prefer in-page controls for anything important.
 - Typing into the simulator from automation doesn't work reliably; test text fields by hand.
+- Screenshots of the Duo: in the Closed pose `simctl io ... screenshot` needs `--display=primary` (without it the picture is black); in the Open and Partially Open poses use it without `--display`. Pictures sometimes lag a few seconds behind the screen; wait, or compare with the Device Hub window.
