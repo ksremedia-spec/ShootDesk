@@ -68,7 +68,7 @@ Duo simulator `1DBDC341-4076-48E1-9445-FC21C9F1AF1B` (the one with Kyle's keys a
 Oct 19 setup notes:
 - Kyle's Mac has three Xcodes. `/Applications/Xcode.app` is 27.0 and CANNOT build the app (no `onHingeChange` /
   `reservedRegions` in the 27.0 SDK). `~/Desktop/Xcode 2.app` and `~/Downloads/Xcode.app` are both 27.1 (27A9275,
-  the same build GitHub uses). Kyle switched the Mac's default to `~/Desktop/Xcode 2.app` with `xcode-select` on Oct 19.
+  the same build GitHub used). Kyle switched the Mac's default to `~/Desktop/Xcode 2.app` with `xcode-select` on Oct 19.
 - No Homebrew on the Mac. XcodeGen 2.46.0 (official GitHub release) is at `~/.local/xcodegen/xcodegen/bin/xcodegen`,
   not on PATH; run it by that full path from the project folder.
 - Xcode 27 has no "Simulator" app; the simulator window is Device Hub
@@ -111,49 +111,19 @@ Oct 19 setup notes:
 7. Photo cache raised to 2 GB on disk (`App/ShootDeskApp.swift`). Kyle's call.
 8. `CLAUDE.md` gained the rules for `SideSafeScroller` and the fold helpers.
 
-## How building works now (Oct 17 2026): GitHub builds it
+## How building works now (Oct 19 2026): on the Mac
 
-Claude Code in the cloud runs on Linux and cannot compile or run an iOS app itself. Instead, every push to
-`main` runs `.github/workflows/build.yml` on one of GitHub's cloud Macs (the `xcode-27` image; its "Xcode 27.1"
-is the 27.1 Release Candidate, build 27A9275, per the run log). The loop from a phone is: edit → commit → push →
-open the repo's Actions tab → green check or red X.
+Kyle builds and runs the app on his Mac (Xcode 27.1, the iPhone Duo simulator); see "Build and run on the Mac" below.
+From Oct 17 to Oct 19 a GitHub workflow (`.github/workflows/build.yml`) compiled every push on GitHub's cloud Macs
+and took a screenshot of each tab. Kyle retired it on Oct 19 ("we're local") and the file was deleted, so a push now
+only stores the code on GitHub. Left behind on purpose: the old `screenshots` branch on GitHub (untouched) and the
+`-startTab <tab>` launch argument in `RootView` (nothing passes it now).
 
-- A green check means the app COMPILES (for the simulator, unsigned) and, if the run's summary page says
-  "Launch check: the app opened on ...", that it also opened on a simulator on every tab, light and dark, without
-  crashing. It does not mean it looks right or works; that still needs eyes on the Duo simulator (Kyle's Mac) or the
-  real phone. Say "compiles and opens on GitHub", never "works". If the summary says "Launch check skipped", only the
-  compile is proven. A build for the real phone needs Kyle's signing, so it happens on his Mac.
-- On a red X: read the "Errors and warnings" step of that run for compile errors. If the summary says "Launch check
-  failed", read the "Open the app on a simulator" step (it prints the error lines iOS logged about the app) and
-  `launch-check/app-log.txt` plus `launch-check/crashes/` (if present) in the build-output artifact. Claude Code in the
-  cloud reads runs and job logs itself through the GitHub connector; Kyle doesn't need to paste anything. Fix, push,
-  wait. Same error twice → stop and explain.
-- After compiling, the workflow opens the app on a simulator once per tab (Today, Listings, Customers, Money, Ask,
-  Settings), in light and then dark: 12 launches, a screenshot of each, launched with the `-startTab <tab>` argument
-  that `RootView` honors for exactly this (added Oct 17; nothing else passes it). The screenshots are pushed to the
-  `screenshots` branch, github.com/ksremedia-spec/ShootDesk/tree/screenshots, one commit replaced on every build
-  (the README there shows them inline, fine on a phone), and are also in the build-output artifact with
-  `launch-check/app-log.txt`. It tries the iPhone Duo first; GitHub's image has the Duo device but only the iOS 27.0
-  simulator, which the Duo refuses, so it opens on a regular iPhone already on the runner (the image has iPhone 17,
-  17e, 18 Pro and Air; the summary line says which, and why it's not the Duo). Assumed: the Duo starts being used by
-  itself once the image gets iOS 27.1. With no Aryeo key in the cloud every tab shows its empty state; on a regular
-  iPhone iOS puts the 5th and 6th tabs under "More", so Ask and Settings show a back arrow at the top (seen Oct 17,
-  not an app bug; the Duo lays its tabs out differently).
-  Red only if the app crashed (a launch the simulator refused and a crash report, or the process gone when checked);
-  any simulator problem skips with a message instead. The boot wait is capped at 5 minutes for the same reason.
-  Claude Code in the cloud can't download artifacts (network rule) but CAN read the screenshots branch through
-  raw.githubusercontent.com, so it can look at the pictures and describe them.
-  First tour, Oct 17 (run #4): green on the iPhone 18 Pro, iOS 27.0 simulator; all 12 pictures looked right. A run now
-  takes about 12 minutes: 2 to compile, 1 to boot the simulator, then about 6 minutes of silence before the first
-  launch (the fresh simulator finishing its first-boot setup; verified from the timestamps, cause assumed), then
-  10 seconds per tab. Free on a public repo; nothing to fix.
 - Known warning, not an error: `App/Booking.swift:330`, Siri booking's `requestConfirmation(result:...)` is
   deprecated (Apple suggests `requestConfirmation(conditions:actionName:dialog:)`). Deprecated still works. Left
   alone on purpose: it's booking code and Siri booking hasn't been tried on a phone. Raise it, don't change it unasked.
-- GitHub's Mac minutes are free on a public repo. On a private repo they count 10x against the plan's free
-  minutes (as far as I know: 2,000 min/month on the Free plan, so about 200 Mac-minutes, roughly 20–30 builds).
-  The repo IS public (checked Oct 17), so builds cost nothing; one takes about 2 minutes. Public also means anyone
-  can read the code and these notes. No keys are in the repo (checked Oct 17); keep it that way.
+- The GitHub repo IS public (checked Oct 17): anyone can read the code and these notes. No keys are in the repo
+  (checked Oct 17); keep it that way.
 
 ## Build and run on the Mac (needs Xcode 27.1)
 
@@ -188,13 +158,10 @@ session with computer use can press them itself (verified Oct 19).
 
 ## Verify, in this order (take a screenshot for each)
 
-Oct 19 status: 0–3 and 6 done (see "Oct 19 Mac session: verify results" above); 4 waits on developer mode;
+Oct 19 status: 0 retired; 1–3 and 6 done (see "Oct 19 Mac session: verify results" above); 4 waits on developer mode;
 5 fixed in the simulator Oct 19 (shoot page was black when half-open; now shows the normal page); 7 is this update (README status not yet updated).
 
-0. No Mac needed: open github.com/ksremedia-spec/ShootDesk/tree/screenshots after a green build. Twelve pictures,
-   every tab light and dark, on a regular iPhone with no key: empty states only. Proves the app opens; nothing else.
-   Done Oct 17 for run #4: Today/Listings/Customers show "Connect Aryeo", Money "Connect Stripe", Ask its six
-   suggested questions with the orange "add your Claude key" line, Settings the empty key rows. Light and dark both fine.
+0. Retired Oct 19 with the GitHub build (was: look at the cloud screenshots of every tab; done Oct 17, all fine).
 1. FOLDED Listings tab: the Upcoming rail must stop at the vertical tab-bar pill. Scroll the rail to its end:
    the last card fully visible, not under the pill. Then: Today tab rails, an agent page rail (Customers), a
    shoot page's "This house before" rail and hourly forecast chips. Check the OPEN pose too (side column on
@@ -267,7 +234,6 @@ typing an address into Book a shoot (the simulator wouldn't take typing from aut
   (`.systemExtraLargePortrait` in `NextShootWidget.swift`, drawn with the large layout and up to 9 "coming up"
   rows instead of 3); remove it from the picker? He asked for a plain-English explanation first. (b) swap the
   deprecated Siri confirm call once Siri booking can be tried on the phone. (The cloud "does it open" check was
-  asked for and built Oct 17; see "How building works now".)
-- Kyle asked Oct 17 to "show every page screenshots". The cloud can only show empty states on a regular iPhone
-  (built as the tab tour above). Real pages with his shoots, on the Duo, folded and open, need his Mac. If he wants
-  filled-in cloud screenshots, that means a demo-data mode with made-up shoots: a real feature, ask first.
+  asked for and built Oct 17 and retired Oct 19; see "How building works now".)
+- Kyle asked Oct 17 to "show every page screenshots". The cloud tour (empty states on a regular iPhone) was
+  retired Oct 19; real pages with his shoots, on the Duo, folded and open, come from the Duo simulator on the Mac.
