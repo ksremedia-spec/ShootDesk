@@ -209,26 +209,43 @@ struct ShootsMapView: View {
     }
 
     /// Bubble size in points for a count. Area grows with the count.
-    private func diameter(_ count: Int) -> Double {
-        min(78, 28 + 46 * sqrt(Double(count) / Double(max(largest, 1))))
+    /// `largest` is the biggest town's count; pass it in when calling in a loop, since working it out
+    /// means grouping every shoot again.
+    private func diameter(_ count: Int, largest: Int? = nil) -> Double {
+        min(78, 28 + 46 * sqrt(Double(count) / Double(max(largest ?? self.largest, 1))))
     }
 
     /// Greedy merge: biggest towns first, anything whose bubble would overlap joins it.
     private func clusters(in mapSize: CGSize) -> [Cluster] {
         let all = towns
+        let biggest = all.first?.jobs.count ?? 1
         guard let r = region, mapSize.width > 0, mapSize.height > 0 else { return all.map { Cluster(towns: [$0]) } }
         let ptPerLon = mapSize.width / r.span.longitudeDelta
         let ptPerLat = mapSize.height / r.span.latitudeDelta
+        func touch(_ lat: Double, _ lon: Double, _ count: Int, _ c: Cluster) -> Bool {
+            let dx = (c.lon - lon) * ptPerLon, dy = (c.lat - lat) * ptPerLat
+            return (dx * dx + dy * dy).squareRoot() < (diameter(c.count, largest: biggest) + diameter(count, largest: biggest)) / 2
+        }
         var out: [Cluster] = []
         for t in all {   // already sorted, most shoots first
-            let dT = diameter(t.jobs.count)
-            if let i = out.firstIndex(where: { c in
-                let dx = (c.lon - t.lon) * ptPerLon, dy = (c.lat - t.lat) * ptPerLat
-                return (dx * dx + dy * dy).squareRoot() < (diameter(c.count) + dT) / 2 * 0.8
-            }) {
+            if let i = out.firstIndex(where: { touch(t.lat, t.lon, t.jobs.count, $0) }) {
                 out[i] = Cluster(towns: out[i].towns + [t])
             } else {
                 out.append(Cluster(towns: [t]))
+            }
+        }
+        // A bubble grows and shifts as towns join it, so it can end up on top of one placed earlier.
+        // Keep merging until no two bubbles touch.
+        var merged = true
+        while merged {
+            merged = false
+            search: for i in out.indices {
+                for j in out.indices where j > i && touch(out[j].lat, out[j].lon, out[j].count, out[i]) {
+                    out[i] = Cluster(towns: out[i].towns + out[j].towns)
+                    out.remove(at: j)
+                    merged = true
+                    break search
+                }
             }
         }
         return out.sorted { $0.count < $1.count }
@@ -257,10 +274,13 @@ struct ShootsMapView: View {
     /// Only take a new camera when it really moved, so tiny settles don't redraw every bubble.
     private func noteCamera(_ r: MKCoordinateRegion) {
         guard let old = region else { region = r; return }
-        let spanRatio = r.span.latitudeDelta / max(old.span.latitudeDelta, 0.000_001)
+        // Both directions: on the wide open Duo the map shows more east-west than the region it was
+        // given, and the bubbles need the real width to space themselves.
+        let latRatio = r.span.latitudeDelta / max(old.span.latitudeDelta, 0.000_001)
+        let lonRatio = r.span.longitudeDelta / max(old.span.longitudeDelta, 0.000_001)
         let moved = max(abs(r.center.latitude - old.center.latitude) / max(old.span.latitudeDelta, 0.000_001),
                         abs(r.center.longitude - old.center.longitude) / max(old.span.longitudeDelta, 0.000_001))
-        if spanRatio > 1.1 || spanRatio < 0.9 || moved > 0.15 { region = r }
+        if latRatio > 1.1 || latRatio < 0.9 || lonRatio > 1.1 || lonRatio < 0.9 || moved > 0.15 { region = r }
     }
 
     private func zoom(to c: Cluster) {
@@ -346,6 +366,11 @@ struct ShootsMapView: View {
             selectedTown = nil
             if let home = homeRegion() { withAnimation(.smooth) { position = .region(home) } }
         }
+        // Opened before the shoots were read in: the camera started on a fallback view, so move it
+        // to the usual opening view once they arrive.
+        .onChange(of: model.jobs.isEmpty) { wasEmpty, isEmpty in
+            if wasEmpty, !isEmpty, let home = homeRegion() { position = .region(home) }
+        }
     }
 
     private func bubble(_ c: Cluster) -> some View {
@@ -367,7 +392,8 @@ struct ShootsMapView: View {
 
     private var header: some View {
         let title = VStack(alignment: .leading, spacing: 1) {
-            Text("\(mapped.count) shoots in \(towns.count) towns").font(.address(.headline))
+            // Right after launch the saved shoots are still being read in; say so instead of "0 shoots".
+            Text(model.jobs.isEmpty ? "Loading your shoots…" : "\(mapped.count) shoots in \(towns.count) towns").font(.address(.headline))
             Text(showHouses ? "Tap a house to open it" : "Tap a town to see its shoots. Zoom in for houses.")
                 .font(.caption).foregroundStyle(.secondary)
         }

@@ -98,7 +98,7 @@ struct StopDetailView: View {
                 lightCard
                 notesCard
             }
-            PhotosCard(job: job, onKit: { showKit = true })
+            PhotosCard(job: job, coverID: model.coverID(for: job), onKit: { showKit = true })
             if !earlierVisits.isEmpty { earlierSection }
         }
         .padding(.horizontal, gutter)

@@ -7,6 +7,9 @@ import AVKit
 struct PhotosCard: View {
     @Environment(AppModel.self) private var model
     let job: Job
+    /// The cover photo's id, passed in so the grid redraws when it changes (a job with a new cover
+    /// still compares equal, so SwiftUI would otherwise keep the old "Cover" label).
+    let coverID: String?
     var onKit: (() -> Void)? = nil
 
     @State private var saver = PhotoSaver()
@@ -118,7 +121,7 @@ struct PhotosCard: View {
             SectionHeader(title: "Photos", note: "\(images.count)")
             LazyVGrid(columns: [GridItem(.adaptive(minimum: wide ? 150 : 104), spacing: 4)], spacing: 4) {
                 ForEach(preview, id: \.stableID) { img in
-                    let isCover = img.stableID == job.coverImage?.stableID
+                    let isCover = img.stableID == coverID
                     Button { open(.photo(img)) } label: {
                         Color.clear
                             .aspectRatio(4 / 3, contentMode: .fit)

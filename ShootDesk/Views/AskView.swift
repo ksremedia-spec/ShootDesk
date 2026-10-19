@@ -81,7 +81,12 @@ struct AskView: View {
                         if turns.isEmpty {
                             intro
                             // Open Duo: the right half shows your business at a glance until you ask something.
-                            if size == .regular { BusinessSnapshot(money: model.money, missing: model.deliveryFlags, jobs: model.jobs, customers: model.customers, ask: ask) }
+                            if size == .regular {
+                                BusinessSnapshot(money: model.money, stripeConnected: !model.stripeKey.isEmpty, moneyError: model.moneyError,
+                                                 missing: model.deliveryFlags, missingChecked: model.flagsChecked,
+                                                 offline: model.errorMessage != nil,
+                                                 jobs: model.jobs, customers: model.customers, ask: ask)
+                            }
                         }
                         ForEach(turns) { t in
                             TurnView(turn: t, retry: t.failed && !thinking ? {
@@ -244,7 +249,13 @@ struct TurnView: View {
 /// Tap a tile to ask Claude about it.
 struct BusinessSnapshot: View {
     var money: MoneySummary? = nil
+    var stripeConnected = false
+    var moneyError: String? = nil
     var missing: [DeliveryFlag] = []
+    /// False while the first delivery check is still running.
+    var missingChecked = true
+    /// The last Aryeo download failed, so the Stripe and delivery checks that follow it haven't run.
+    var offline = false
     let jobs: [Job]
     let customers: [CustomerStats]
     let ask: (String) -> Void
@@ -306,16 +317,30 @@ struct BusinessSnapshot: View {
                     tile("Received in \(month)", Money.dollars((money.monthNet / 100) * 100),
                          "\(money.monthPayments) payments, \(Money.dollars((money.monthFees / 100) * 100)) in fees",
                          ask: "How busy has \(month) been compared to last month?", stripe: true)
-                } else {
+                } else if !stripeConnected {
                     tile("Money", "Not connected", "Add your key in Settings to see what's landed",
+                         ask: "How many shoots did I deliver in \(month)?", stripe: true)
+                } else if moneyError != nil || offline {
+                    tile("Money", "Couldn't reach Stripe", "Open the Money tab to try again",
+                         ask: "How many shoots did I deliver in \(month)?", stripe: true)
+                } else {
+                    tile("Money", "Checking…", "Reading Stripe",
                          ask: "How many shoots did I deliver in \(month)?", stripe: true)
                 }
                 tile("Next 7 days", "\(weekAhead.count) shoot\(weekAhead.count == 1 ? "" : "s")",
                      weekAhead.first.map { "Next: \($0.street)" } ?? "Nothing booked",
                      ask: "What does my next week look like?")
-                tile("Missing", missing.isEmpty ? "All delivered" : "\(missing.count)",
-                     missing.first.map { "\($0.job.street): \($0.line.lowercased())" } ?? "Every recent video and floor plan is in",
-                     ask: "Which recent shoots are missing their video or floor plan?")
+                if missingChecked {
+                    tile("Missing", missing.isEmpty ? "All delivered" : "\(missing.count)",
+                         missing.first.map { "\($0.job.street): \($0.line.lowercased())" } ?? "Every recent video and floor plan is in",
+                         ask: "Which recent shoots are missing their video or floor plan?")
+                } else if offline {
+                    tile("Missing", "Not checked", "Needs a connection to Aryeo",
+                         ask: "Which recent shoots are missing their video or floor plan?")
+                } else {
+                    tile("Missing", "Checking…", "Looking for videos and floor plans in Aryeo",
+                         ask: "Which recent shoots are missing their video or floor plan?")
+                }
                 tile("Shot this month", "\(shotThisMonth)", "shoots done in \(month)",
                      ask: "How many shoots did I do in \(month) compared to last \(month)?")
                 tile("Agents", "\(active) active", "\(lapsed) quiet lately, worth a check-in",

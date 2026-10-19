@@ -4,6 +4,7 @@ import SwiftUI
 struct ListingKitView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var size
     let job: Job
 
     @State private var facts: PropertyFacts?
@@ -62,7 +63,8 @@ struct ListingKitView: View {
                         Text("Add your Claude key in Settings to write drafts.").font(.footnote).foregroundStyle(.secondary)
                     }
                 }
-                .padding(16)
+                .padding(.vertical, 16)
+                .padding(.horizontal, Gutter.of(size))
             }
             .background(Color(.systemBackground))
             .slimBar("Listing kit")

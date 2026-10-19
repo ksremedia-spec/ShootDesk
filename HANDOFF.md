@@ -82,17 +82,28 @@ Rose, last card Wildwood Pl fully visible); the cover photo shows on the Listing
 and then put back to Aryeo's first photo, `coverChoices` empty again); the half-open shoot page draws the normal
 page.
 
-Found, not fixed (ask Kyle):
-- Cover badge (known): after "Use as cover photo" the "Cover" label stays on the old photo until the page is
-  reopened. Seen again; the hero, the Listings card and the saved choice are all right.
-- Ask, Open and Partially Open: for the first 10 to 15 seconds after the app opens, the summary tiles say
-  "Money: Not connected" and "Missing: All delivered" before the real numbers arrive ($4,545; 1 missing). Reads
-  as wrong rather than loading.
-- Listings, when it opens straight onto the map (it remembers the last view): "0 shoots in 0 towns" and a blank
-  map for about 15 seconds, then 692 shoots in 85 towns. Same kind of thing.
-- Listing kit uses a fixed 16 pt side margin (`ListingKitView.swift`, `.padding(16)`) instead of `Gutter.of`,
-  so on the open Duo its text sits nearer the edge than other screens. Cosmetic.
-- Open map: two town bubbles overlap at the zoomed-out view (the 95 half under the 303). Cosmetic.
+Found in the pass, all five FIXED the same evening at Kyle's request (checked in the simulator, not on a phone):
+- Cover badge: the "Cover" label stayed on the old photo until the page was reopened. Cause: the shoot page holds
+  a `Job`, and a job with a new cover still compares equal, so SwiftUI skipped the redraw. Fix: `AppModel.coverVersion`
+  goes up on every cover change and `AppModel.coverID(for:)` reads it; `StopDetailView` passes that to `PhotosCard`
+  (new `coverID` parameter). Checked: set a cover and the label moves at once; "Use Aryeo's first photo" moves it
+  back at once; `coverChoices` saved and cleared. (A first try, passing the id without the counter, fixed setting
+  but not undoing.)
+- Ask (open Duo) summary tiles: "Money: Not connected" and "Missing: All delivered" while still loading. Now the
+  Money tile says "Checking…" while Stripe loads, "Couldn't reach Stripe" if it fails, and "Not connected" only
+  with no key; Missing says "Checking…" until the first delivery check finishes (`AppModel.flagsChecked`) and
+  "Not checked" if Aryeo couldn't be reached. Checked: "Checking…" then $4,545 and 1 missing; during a real Stripe
+  timeout the tile said "Couldn't reach Stripe".
+- Listings map "0 shoots in 0 towns": the header now says "Loading your shoots…" when there are none yet, and the
+  camera moves to the usual opening view once they arrive. The real cause of the wait turned out to be speed: the
+  bubble maths re-grouped all 692 shoots for every bubble size, which kept a processor core at 99% for 30+
+  seconds. Bubble sizes are now worked out once per redraw. Checked folded: bubbles drawn within 5 seconds, the
+  app idle afterwards.
+- Listing kit margins: now `Gutter.of(size)` (28 open, 18 folded) instead of a fixed 16. Checked open.
+- Map bubbles overlapping: bubbles now merge whenever they would touch (no 20% allowance), keep merging after a
+  bubble grows, and the map notices width changes as well as height. Checked open: the 96 sits beside the 339,
+  no longer half under it; some bubbles touch at the edges. Not rechecked open after the speed fix (Device Hub's
+  replacement window had no pose buttons); the speed fix doesn't change where bubbles go.
 
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the

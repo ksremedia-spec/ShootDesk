@@ -77,6 +77,8 @@ final class AppModel {
 
     /// Shoots 2+ days old whose order includes video or a floor plan that hasn't been delivered in Aryeo.
     private(set) var deliveryFlags: [DeliveryFlag] = []
+    /// False until the first delivery check has finished, so screens can say "checking" instead of "all delivered".
+    private(set) var flagsChecked = false
     @ObservationIgnored private var flagsRanAt: Date?
     func flag(for job: Job) -> DeliveryFlag? { deliveryFlags.first { $0.id == job.id } }
 
@@ -179,8 +181,17 @@ final class AppModel {
 
     /// Makes a photo the cover for a shoot: its card, the top of its page and Present mode's opening card.
     /// Pass nil to go back to Aryeo's first photo.
+    /// Goes up by one on every cover change. Screens that show a cover read it, so they redraw even when
+    /// the job they hold compares equal to the new one (the cover isn't part of a job's equality).
+    private(set) var coverVersion = 0
+    func coverID(for job: Job) -> String? {
+        _ = coverVersion
+        return job.coverImage?.stableID
+    }
+
     func setCover(_ image: ListingImage?, for job: Job) {
         CoverChoice.set(image?.stableID, for: job.id)
+        coverVersion += 1
         // Cards read the cover off the job, so hand out fresh jobs to make every card redraw.
         jobs = JobBuilder.jobs(from: store.orders)
     }
@@ -378,6 +389,7 @@ final class AppModel {
             if !missing.isEmpty { out.append(DeliveryFlag(job: j, missing: missing)) }
         }
         deliveryFlags = out.sorted { ($0.job.start ?? .distantPast) < ($1.job.start ?? .distantPast) }
+        flagsChecked = true
         await DeliveryAlerts.notify(deliveryFlags)
     }
 
