@@ -51,15 +51,18 @@ Duo simulator `1DBDC341-4076-48E1-9445-FC21C9F1AF1B` (the one with Kyle's keys a
    `sudo DevToolsSecurity -enable` (Kyle types his password) or run from Xcode and use Debug → Simulate Background
    Fetch, approving the prompt. Note `backgroundRefresh()` logs nothing; judge it by `orders.json`/`sync.json` in the
    app's Application Support/ShootDesk folder getting a new timestamp, and the app staying alive.
-5. Half-open pose: FAIL. Device Hub's Partially Open pose: the shoot page goes completely black (tab pill and back
-   button still drawn), seen twice, the second time after a full simulator restart. The Listings tab and the Home
-   Screen draw normally in the same pose, so the simulator is fine and the problem is the shoot page's `laptop`
-   layout in `StopDetailView`. Likely cause (assumed, not proven): in this pose the simulated Duo folds left-right
-   like a book (hinge down the middle of the wide screen), but `laptop` assumes a top-bottom fold. If
-   `reservedRegions(kind: .division)` returns a band that runs the full height, `band.top` is 0 and the photo gets
-   0 height, the details ScrollView gets 0 height, and the full-height spacer paints the black background. Next step:
-   print `geo.foldBand` and `geo.size` in that pose before changing anything, and ask Kyle which way the real Duo
-   folds when half-open on a table. Not fixed.
+5. Half-open pose: FIXED in the simulator (committed Oct 19). Device Hub's Partially Open pose made the
+   shoot page go completely black. Cause VERIFIED with a temporary print (since removed): in that pose the
+   simulated Duo folds like a book. `reservedRegions(kind: .division)` returned one active 40 pt wide strip,
+   x 455.5, y 0, height 669 (the full screen height), with the view 867 x 635. `laptop` reads only the strip's top
+   and bottom, so the photo got 0 height, the details got 0 height, and the spacer filled the page with black.
+   Kyle chose (Oct 19): when the fold runs top to bottom, show the normal shoot page and ignore the fold.
+   `GeometryProxy.foldRunsTopToBottom` (strip taller than wide) in `Views/Components.swift`; `laptop` in
+   `StopDetailView` shows `page` when it's true. The photo-above, details-below layout is kept for a fold that runs
+   side to side. Checked: the Partially Open shoot page (6 Morrison Way) now draws the normal two-column page and
+   scrolls; the hourly forecast chips showed there too. Not checked: Closed and Open poses after the change
+   (Device Hub access wasn't available; those poses don't use the changed code), and anything on a real phone.
+   Unknown: whether the real Duo ever reports a side-to-side fold, which is the only case the old layout still runs.
 6. Haptics: can't be felt in the simulator; not checked on a real phone.
 
 Oct 19 setup notes:
@@ -186,7 +189,7 @@ session with computer use can press them itself (verified Oct 19).
 ## Verify, in this order (take a screenshot for each)
 
 Oct 19 status: 0–3 and 6 done (see "Oct 19 Mac session: verify results" above); 4 waits on developer mode;
-5 fails (shoot page black when half-open); 7 is this update (README status not yet updated).
+5 fixed in the simulator Oct 19 (shoot page was black when half-open; now shows the normal page); 7 is this update (README status not yet updated).
 
 0. No Mac needed: open github.com/ksremedia-spec/ShootDesk/tree/screenshots after a green build. Twelve pictures,
    every tab light and dark, on a regular iPhone with no key: empty states only. Proves the app opens; nothing else.
@@ -205,7 +208,8 @@ Oct 19 status: 0–3 and 6 done (see "Oct 19 Mac session: verify results" above)
    change; the "Cover" badge moves; "Use Aryeo's first photo" undoes it; survives relaunch.
 4. Background refresh: Xcode → Debug → Simulate Background Fetch with the app running; console shows a quick
    refresh, no crash. Real timing can't be checked in the simulator — say so.
-5. Half-open pose: Partially Open → shoot page: photo above the fold, details below.
+5. Half-open pose: Partially Open → shoot page: the normal page (the simulated Duo folds like a book). A fold that
+   runs side to side would show the photo above it and the details below.
 6. Haptics can't be felt in the simulator — "simulated, not checked on a real phone".
 7. Update the Status section of `README.md` and this file. Keep `CLAUDE.md` "Known quirks" current.
 

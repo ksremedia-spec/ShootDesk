@@ -210,6 +210,17 @@ extension GeometryProxy {
         }
         return nil
     }
+
+    /// True when the fold runs top to bottom through this view (the Duo standing like a half-open book),
+    /// where a picture-above, details-below split doesn't fit. False when flat, closed, or not a Duo.
+    var foldRunsTopToBottom: Bool {
+        if #available(iOS 27.1, *) {
+            if let fold = reservedRegions(kind: .division).first(where: { $0.isActive }) {
+                return fold.frame.height > fold.frame.width
+            }
+        }
+        return false
+    }
 }
 
 // MARK: - Status

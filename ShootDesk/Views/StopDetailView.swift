@@ -58,18 +58,23 @@ struct StopDetailView: View {
 
     /// Duo half-open like a laptop: the photo (or map) fills the top half right down to the fold,
     /// and the actions and details scroll on the bottom half. Nothing sits across the hinge.
+    /// When the fold runs top to bottom instead (half-open like a book), it's just the usual page.
     private var laptop: some View {
         GeometryReader { geo in
-            let band = geo.foldBand ?? (top: geo.size.height / 2, bottom: geo.size.height / 2)
-            VStack(spacing: 0) {
-                heroArt(width: geo.size.width, height: band.top)
-                Color(.systemBackground)
-                    .frame(height: max(0, band.bottom - band.top))
-                ScrollView {
-                    details
+            if geo.foldRunsTopToBottom {
+                page
+            } else {
+                let band = geo.foldBand ?? (top: geo.size.height / 2, bottom: geo.size.height / 2)
+                VStack(spacing: 0) {
+                    heroArt(width: geo.size.width, height: band.top)
+                    Color(.systemBackground)
+                        .frame(height: max(0, band.bottom - band.top))
+                    ScrollView {
+                        details
+                    }
+                    .scrollIndicators(.hidden)
+                    .frame(height: max(0, geo.size.height - band.bottom))
                 }
-                .scrollIndicators(.hidden)
-                .frame(height: max(0, geo.size.height - band.bottom))
             }
         }
         .ignoresSafeArea(edges: .top)
