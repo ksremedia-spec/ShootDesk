@@ -1,4 +1,4 @@
-# ShootDesk handoff — Saturday, Oct 17 2026 (updated 11 PM: first cloud build is green)
+# ShootDesk handoff — Monday, Oct 19 2026 (first Mac session: Oct 17 changes seen running in the Duo simulator)
 
 ShootDesk is Kyle Silva's personal iPhone app (Horizon Home Media, real-estate photography) that replaces
 Aryeo Go, built for the iPhone Duo. Project on the Mac: `~/Documents/ShootDesk-github`, a clone of GitHub made Oct 19.
@@ -19,8 +19,63 @@ folded and open, light and dark. Nothing has run on a real phone yet; Kyle's Duo
 On Oct 17 a batch of changes was written WITHOUT a Mac available. That night they compiled for the first time,
 on GitHub's cloud Mac (Actions runs #1 and #2 both green; full log of #2, commit af08ecf, read line by line:
 BUILD SUCCEEDED, every source file of the app and the widget compiled, no errors, one warning, see below).
-Compiling proves the code is valid against Apple's iOS 27.1 SDK, nothing more. None of these changes has been
-SEEN RUNNING yet, in any simulator or on a phone: call them "compiles on GitHub, not seen running".
+Compiling proves the code is valid against Apple's iOS 27.1 SDK, nothing more.
+
+On Oct 19 they were built on Kyle's Mac and run in the iPhone Duo simulator with his real Aryeo data. Results are in
+"Oct 19 Mac session: verify results" below. Still nothing on a real phone.
+
+## Oct 19 Mac session: verify results (checked in the simulator, not on a real phone)
+
+Build: `xcodegen` + `xcodebuild` with Xcode 27.1, BUILD SUCCEEDED, only the known Siri deprecation warning. Run on the
+Duo simulator `1DBDC341-4076-48E1-9445-FC21C9F1AF1B` (the one with Kyle's keys and cached orders; the other Duo,
+`FA6CE7DE-…`, is empty). No code was changed in this session.
+
+1. Sideways rails stop at the tab pill: PASS. Folded: Listings "Upcoming" (scrolled to the last of 10 cards), Today
+   "This week" (last card 9 Calderwood Ave) and "Recently delivered" (last card 250 Davis St), and a shoot page's
+   "This house before" (283 Union St, 11 other orders), all end at the pill. Open: Listings Upcoming ends clear of the
+   pill. Not checked: the agent page "Shoots" rail scrolled to its end (start looked right, swipes kept missing it),
+   and the hourly forecast chips (no shoot opened showed them). Filmstrip in the photo viewer looked fine folded.
+2. Widgets: PASS. Small and large Next Shoot both show the package line; small street fits on one line; large lists
+   3 "Coming up" rows each with its package. Found: the small widget's top label truncates to "TOMORR…" when the
+   DRONE badge is shown (not fixed; ties in with the parked all-caps widget copy question). Unknown: which size iOS's
+   widget gallery opens on; the widgets were made by resizing the app icon (iOS 27 long-press menu), which starts small.
+3. Cover photo: MOSTLY PASS, one bug. Press and hold → "Use as cover photo" saves (UserDefaults `coverChoices`,
+   order id → image id, verified in the plist), the shoot page hero changes at once, survives relaunch, and
+   "Use Aryeo's first photo" clears it (verified; 283 Union St / order 1823 is back to Aryeo's first photo).
+   BUG: the "Cover" badge in the photo grid stays on the old photo until the app is relaunched. Likely cause
+   (assumed): `PhotosCard` takes `job: Job`, and `Job` equality doesn't include the cover choice, so SwiftUI skips
+   redrawing the grid after `AppModel.setCover` hands out fresh jobs. Not fixed; ask Kyle. Not checked: the Listings
+   card (couldn't find it among 688 past shoots without typing into search).
+4. Background refresh: NOT DONE. Simulating it needs a debugger attached to the app, and this Mac has developer mode
+   off (`DevToolsSecurity -status`), so the attach waits for Kyle's password. Either run
+   `sudo DevToolsSecurity -enable` (Kyle types his password) or run from Xcode and use Debug → Simulate Background
+   Fetch, approving the prompt. Note `backgroundRefresh()` logs nothing; judge it by `orders.json`/`sync.json` in the
+   app's Application Support/ShootDesk folder getting a new timestamp, and the app staying alive.
+5. Half-open pose: FAIL. Device Hub's Partially Open pose: the shoot page goes completely black (tab pill and back
+   button still drawn), seen twice, the second time after a full simulator restart. The Listings tab and the Home
+   Screen draw normally in the same pose, so the simulator is fine and the problem is the shoot page's `laptop`
+   layout in `StopDetailView`. Likely cause (assumed, not proven): in this pose the simulated Duo folds left-right
+   like a book (hinge down the middle of the wide screen), but `laptop` assumes a top-bottom fold. If
+   `reservedRegions(kind: .division)` returns a band that runs the full height, `band.top` is 0 and the photo gets
+   0 height, the details ScrollView gets 0 height, and the full-height spacer paints the black background. Next step:
+   print `geo.foldBand` and `geo.size` in that pose before changing anything, and ask Kyle which way the real Duo
+   folds when half-open on a table. Not fixed.
+6. Haptics: can't be felt in the simulator; not checked on a real phone.
+
+Oct 19 setup notes:
+- Kyle's Mac has three Xcodes. `/Applications/Xcode.app` is 27.0 and CANNOT build the app (no `onHingeChange` /
+  `reservedRegions` in the 27.0 SDK). `~/Desktop/Xcode 2.app` and `~/Downloads/Xcode.app` are both 27.1 (27A9275,
+  the same build GitHub uses). Kyle switched the Mac's default to `~/Desktop/Xcode 2.app` with `xcode-select` on Oct 19.
+- No Homebrew on the Mac. XcodeGen 2.46.0 (official GitHub release) is at `~/.local/xcodegen/xcodegen/bin/xcodegen`,
+  not on PATH; run it by that full path from the project folder.
+- Xcode 27 has no "Simulator" app; the simulator window is Device Hub
+  (`<Xcode>/Contents/Applications/DeviceHub.app`), with Closed / Partially Open / Open buttons along the bottom.
+- The Claude desktop app's iOS Simulator pane only lists the iOS 26.5 simulators, not the Duo, so it can't show
+  the Duo. Use Device Hub; screenshots still work through the simulator tool.
+- Simulator quirks seen: after a pose change, the simulator tool's screenshots go black or sideways until it's
+  re-attached; in the Open pose its swipe directions are rotated 90°. Long-presses right after a scroll land on
+  whatever scrolled under the finger, so wait a second first. `shootdesk://shoot/<order id>` opens a shoot page
+  (asks "Open in ShootDesk?" the first time); it silently ignores excluded orders such as Jordan Rebello's.
 
 ## Oct 17 changes (compile on GitHub, not seen running): what each one is for
 
@@ -101,32 +156,37 @@ open the repo's Actions tab → green check or red X.
 
 Start here (a local session in the Claude desktop app runs these itself; Kyle doesn't use Terminal):
 
-    cd ~/Documents/ShootDesk-github && git pull && (command -v xcodegen >/dev/null || brew install xcodegen) && xcodegen
+    cd ~/Documents/ShootDesk-github && git pull && ~/.local/xcodegen/xcodegen/bin/xcodegen
 
-Then build and run on the iPhone Duo simulator (`xcodebuild ... -destination 'platform=iOS Simulator,name=iPhone Duo'`,
-or ask the desktop app's iOS Simulator pane to run it). If `git pull` says local changes would be overwritten, stop and
+(No Homebrew on this Mac; XcodeGen lives at that path, see the Oct 19 setup notes above. The Mac's default Xcode
+must be the 27.1 one; check with `xcodebuild -version`.)
+
+Then build and run on the iPhone Duo simulator (`xcodebuild ... -destination 'platform=iOS Simulator,id=1DBDC341-4076-48E1-9445-FC21C9F1AF1B'`;
+there are two Duo simulators, so use the id. The desktop app's iOS Simulator pane can't show the Duo; Kyle watches in Device Hub). If `git pull` says local changes would be overwritten, stop and
 read the message; don't force it. Oct 19 setup notes: Claude Code CLI 2.1.303 is installed at `~/.local/bin/claude`
 (not on PATH unless Kyle added it); a cloud session can't control the Mac, a local desktop-app session can.
 
 The Xcode project file isn't committed (see .gitignore); `project.yml` is the recipe. On a fresh clone, or whenever
-source files are added or removed, run `xcodegen` in the project folder first (`brew install xcodegen` once).
+source files are added or removed, run `xcodegen` in the project folder first.
 Then put your Apple Team ID in `project.yml` under DEVELOPMENT_TEAM if Xcode asks for signing.
 
-    cd ~/Documents/ShootDesk
+    cd ~/Documents/ShootDesk-github
     xcrun simctl list devices available | grep -i duo        # find the iPhone Duo simulator's name/UDID
     xcodebuild -project ShootDesk.xcodeproj -scheme ShootDesk \
       -destination 'platform=iOS Simulator,name=iPhone Duo' build 2>&1 | tail -40
-    xcrun simctl boot "iPhone Duo"; open -a Simulator
+    xcrun simctl boot 1DBDC341-4076-48E1-9445-FC21C9F1AF1B; open "$(xcode-select -p)/../Applications/DeviceHub.app"
     # install + launch the built app (path printed by xcodebuild, under DerivedData .../Build/Products/Debug-iphonesimulator/ShootDesk.app)
     xcrun simctl install booted <path to ShootDesk.app>
     xcrun simctl launch booted com.horizonhomemedia.shootdesk
     xcrun simctl io booted screenshot ~/Desktop/shootdesk-check.png
 
-Unknown: whether `simctl` can fold/unfold the Duo or set the half-open pose. In Xcode's device window
-(Device Hub) there are Closed / Partially Open / Open buttons; if there's no command-line way, ask Kyle to
-press them while you take screenshots.
+Folding: no `simctl` command found for it. Device Hub's Closed / Partially Open / Open buttons work, and a local
+session with computer use can press them itself (verified Oct 19).
 
 ## Verify, in this order (take a screenshot for each)
+
+Oct 19 status: 0–3 and 6 done (see "Oct 19 Mac session: verify results" above); 4 waits on developer mode;
+5 fails (shoot page black when half-open); 7 is this update (README status not yet updated).
 
 0. No Mac needed: open github.com/ksremedia-spec/ShootDesk/tree/screenshots after a green build. Twelve pictures,
    every tab light and dark, on a regular iPhone with no key: empty states only. Proves the app opens; nothing else.
