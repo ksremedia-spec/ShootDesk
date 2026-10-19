@@ -97,6 +97,18 @@ open the repo's Actions tab → green check or red X.
 
 ## Build and run on the Mac (needs Xcode 27.1)
 
+Start here (one paste in Terminal: gets the latest from GitHub, makes the Xcode project, opens it in Xcode):
+
+    cd ~/Documents/ShootDesk && git pull && (command -v xcodegen >/dev/null || brew install xcodegen) && xcodegen && open ShootDesk.xcodeproj
+
+Then pick the iPhone Duo simulator at the top of Xcode and press Run (⌘R). Unknown as of Oct 19: whether
+`~/Documents/ShootDesk` on the Mac is a clone of github.com/ksremedia-spec/ShootDesk. If `git pull` says "not a git
+repository" or "no tracking information", clone fresh beside it instead of touching the old folder
+(`git clone https://github.com/ksremedia-spec/ShootDesk.git ~/Documents/ShootDesk-github`) and run the same line
+there with that folder name. If it says local changes would be overwritten, stop and read the message; don't force it.
+Oct 19: a cloud session couldn't control the Mac (no computer-use link). A session started on the Mac itself
+(the Claude desktop app with Computer use on, or `claude remote-control` in the project folder) can drive Xcode.
+
 The Xcode project file isn't committed (see .gitignore); `project.yml` is the recipe. On a fresh clone, or whenever
 source files are added or removed, run `xcodegen` in the project folder first (`brew install xcodegen` once).
 Then put your Apple Team ID in `project.yml` under DEVELOPMENT_TEAM if Xcode asks for signing.
