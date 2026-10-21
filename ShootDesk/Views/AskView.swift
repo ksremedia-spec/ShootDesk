@@ -208,9 +208,9 @@ struct AskView: View {
 
     private var listening: Bool { voice.phase == .listening || voice.phase == .finishing }
 
-    /// Voice only (Kyle, Oct 21): tap the mic once and it turns into a moving orb, the screen's edge glows (both
-    /// follow your voice), and the words appear above the orb as they come. It sends itself after 2 seconds of
-    /// quiet; tapping the orb sends sooner, the X throws it away. No captions on screen.
+    /// Voice only (Kyle, Oct 21): tap the mic once and a listening panel opens at once (a tap you feel, a soft
+    /// sound, a smooth wave that follows your voice, a glow round the screen's edge, and the words as they come); it sends itself after 2 seconds of quiet. The arrow
+    /// sends sooner, the X throws it away. No captions on screen.
     private var inputArea: some View {
         VStack(spacing: 8) {
             if let line = voiceStatusLine {
@@ -221,8 +221,11 @@ struct AskView: View {
                     .transition(.opacity)
             }
             if listening {
-                listeningControls
-                    .transition(.opacity)
+                ListeningPanel(voice: voice, level: voiceLevel,
+                               cancel: { voice.cancel(); AskSounds.play(.micOff); micTick += 1 },
+                               send: { Task { let q = await voice.finish(); AskSounds.play(.micOff); if !q.isEmpty { ask(q) } } })
+                    .frame(maxWidth: 560)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
             } else {
                 micButton
                     .transition(.opacity)
@@ -250,46 +253,6 @@ struct AskView: View {
         return CGFloat(recent.reduce(0, +) / Float(max(1, recent.count)))
     }
 
-    private var listeningControls: some View {
-        VStack(spacing: 14) {
-            if !voice.text.isEmpty {
-                (Text(voice.settledText.isEmpty ? "" : voice.settledText + " ")
-                    + Text(voice.guessText).foregroundStyle(.secondary))
-                    .font(.body)
-                    .lineLimit(4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 14).padding(.vertical, 12)
-                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .frame(maxWidth: 560)
-                    .animation(.easeOut(duration: 0.15), value: voice.text)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-            }
-            // The orb sits exactly where the mic was, so the button seems to come alive.
-            ZStack {
-                Button {
-                    Task { let q = await voice.finish(); AskSounds.play(.micOff); if !q.isEmpty { ask(q) } }
-                } label: {
-                    VoiceOrb(level: voiceLevel, sending: voice.phase == .finishing)
-                }
-                .buttonStyle(.pressable)
-                .disabled(voice.text.isEmpty || voice.phase == .finishing)
-                .accessibilityLabel("Send")
-                HStack {
-                    Button { voice.cancel(); AskSounds.play(.micOff); micTick += 1 } label: {
-                        Image(systemName: "xmark").font(.body.weight(.semibold))
-                            .frame(width: 44, height: 44)
-                            .background(Color(.tertiarySystemFill), in: Circle())
-                            .foregroundStyle(.primary)
-                    }
-                    .buttonStyle(.pressable)
-                    .accessibilityLabel("Cancel")
-                    Spacer()
-                }
-                .frame(maxWidth: 560)
-            }
-        }
-    }
-
     /// Real status only: iOS fetching its speech model, or something that went wrong.
     private var voiceStatusLine: String? {
         switch voice.phase {
@@ -313,9 +276,9 @@ struct AskView: View {
             Image(systemName: "mic.fill")
                 .font(.title2.weight(.semibold))
                 .frame(width: 68, height: 68)
-                .background(Color.claude, in: Circle())
+                .background(Theme.accent, in: Circle())
                 .foregroundStyle(.white)
-                .shadow(color: Color.claude.opacity(0.3), radius: 8)
+                .shadow(color: Theme.accent.opacity(0.25), radius: 8)
                 .opacity(thinking ? 0.45 : 1)
         }
         .buttonStyle(.pressable)
@@ -417,6 +380,98 @@ struct Breathing: ViewModifier {
 
 /// While listening: a red dot, a waveform that moves with your voice, and the words as they come (the
 /// recognizer's still-settling guess in grey). X throws it away, the arrow sends now.
+struct ListeningPanel: View {
+    let voice: VoiceInput
+    let level: CGFloat
+    let cancel: () -> Void
+    let send: () -> Void
+    @State private var pulse = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Circle().fill(Color.red).frame(width: 9, height: 9)
+                    .opacity(pulse ? 0.35 : 1)
+                    .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true), value: pulse)
+                    .onAppear { pulse = true }
+                Text(voice.phase == .finishing ? "Sending" : "Listening")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                Spacer()
+            }
+            VoiceWave(level: level)
+                .frame(height: 38)
+            if !voice.text.isEmpty {
+                (Text(voice.settledText.isEmpty ? "" : voice.settledText + " ")
+                    + Text(voice.guessText).foregroundStyle(.secondary))
+                    .font(.body)
+                    .lineLimit(4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentTransition(.opacity)
+                    .animation(.easeOut(duration: 0.15), value: voice.text)
+            }
+            HStack {
+                Button(action: cancel) {
+                    Image(systemName: "xmark").font(.body.weight(.semibold))
+                        .frame(width: 44, height: 44)
+                        .background(Color(.tertiarySystemFill), in: Circle())
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.pressable)
+                .accessibilityLabel("Cancel")
+                Spacer()
+                Button(action: send) {
+                    Image(systemName: "arrow.up").font(.body.weight(.bold))
+                        .frame(width: 44, height: 44)
+                        .background(Theme.accent, in: Circle())
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.pressable)
+                .disabled(voice.text.isEmpty || voice.phase == .finishing)
+                .opacity(voice.text.isEmpty ? 0.4 : 1)
+                .accessibilityLabel("Send")
+            }
+        }
+        .padding(14)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.accent.opacity(0.55), lineWidth: 1.5))
+    }
+}
+
+/// A smooth, flowing line that follows your voice: a few soft waves drifting across, calm when you're quiet,
+/// taller as you talk, tapering to nothing at both ends. (Replaced the moving bars, Oct 21.)
+struct VoiceWave: View {
+    var level: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let waves: [(cycles: Double, speed: Double, height: CGFloat, opacity: Double, width: CGFloat)] = [
+        (1.4, 2.4, 1.0, 1.0, 2.2), (2.1, -1.7, 0.65, 0.45, 1.6), (2.9, 3.1, 0.4, 0.25, 1.2),
+    ]
+
+    var body: some View {
+        TimelineView(.animation(paused: reduceMotion)) { tl in
+            let t = reduceMotion ? 0 : tl.date.timeIntervalSinceReferenceDate
+            Canvas { ctx, size in
+                let mid = size.height / 2
+                let reach = max(0.05, min(1, level)) * mid * 0.92
+                for w in waves {
+                    var line = Path()
+                    for i in 0...90 {
+                        let x = Double(i) / 90
+                        let taper = pow(4 * x * (1 - x), 2)
+                        let y = mid + reach * w.height * CGFloat(taper * sin(2 * .pi * w.cycles * x + t * w.speed))
+                        let point = CGPoint(x: x * size.width, y: y)
+                        if i == 0 { line.move(to: point) } else { line.addLine(to: point) }
+                    }
+                    ctx.stroke(line, with: .color(Theme.accent.opacity(w.opacity)),
+                               style: StrokeStyle(lineWidth: w.width, lineCap: .round, lineJoin: .round))
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 /// Claude's warm colors, for the listening glow and orb.
 private enum VoiceColors {
     static let clay = Color(red: 0xC1 / 255, green: 0x5F / 255, blue: 0x3C / 255)
@@ -447,43 +502,6 @@ struct EdgeGlow: View {
         .ignoresSafeArea()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-    }
-}
-
-/// The talk button, alive: warm blobs drifting inside a coral circle, swelling with your voice.
-/// Same size and place as the mic button it replaces.
-struct VoiceOrb: View {
-    var level: CGFloat
-    var sending = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private let blobs: [(color: Color, speed: Double, start: Double)] = [
-        (VoiceColors.peach, 1.1, 0), (VoiceColors.apricot, -0.8, 2.1), (VoiceColors.clay, 0.6, 4.2),
-    ]
-
-    var body: some View {
-        TimelineView(.animation(paused: reduceMotion)) { tl in
-            let t = reduceMotion ? 0 : tl.date.timeIntervalSinceReferenceDate
-            ZStack {
-                Circle().fill(Color.claude)
-                ForEach(blobs.indices, id: \.self) { i in
-                    let b = blobs[i]
-                    let a = t * b.speed * (sending ? 0.4 : 1) + b.start
-                    Ellipse()
-                        .fill(RadialGradient(colors: [b.color, b.color.opacity(0)], center: .center,
-                                             startRadius: 0, endRadius: 28))
-                        .frame(width: 54, height: 40)
-                        .rotationEffect(.radians(a))
-                        .offset(x: cos(a) * 10, y: sin(a * 1.3) * 10)
-                }
-            }
-            .blur(radius: 2)
-            .clipShape(Circle())
-        }
-        .frame(width: 68, height: 68)
-        .scaleEffect(1.04 + level * 0.28)
-        .shadow(color: Color.claude.opacity(0.45), radius: 10 + level * 12)
-        .animation(.spring(response: 0.25, dampingFraction: 0.6), value: level)
     }
 }
 

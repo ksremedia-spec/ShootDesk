@@ -314,18 +314,17 @@ on-device engine and tap-to-talk (he dislikes holding), auto-send after 2 s of q
   (logged), so it fails with "No usable audio format". Kyle chose not to add a fallback engine. Installed on Kyle's
   iPhone Oct 21; not yet seen working there. Don't test voice by playing audio from the Mac (unreliable; Kyle asked).
 
-## Oct 21: listening look like Siri (Kyle: "I don't like" the bars; voice itself works on his iPhone 16 Pro Max)
+## Oct 21: listening look (voice itself works on Kyle's iPhone 16 Pro Max)
 
-- `EdgeGlow` (AskView.swift): while listening, a soft glow in Claude's colors (coral, apricot, sand, clay) runs
-  round the edge of the whole screen, slowly turning, thicker and brighter with your voice. On the NavigationStack, so
-  the open Duo's title bar doesn't cover the top of it; ignores touches. Corner radius 54 (close to the iPhone's
-  screen corners; the blur hides the rest).
-- `VoiceOrb`: the talk button (now Claude coral, was the app blue) turns into a moving orb in the same spot; tap it
-  to send sooner, X to cancel; the live words sit just above it. The red dot, "Listening" label and bars are gone.
-- Both stop moving with Reduce Motion on.
-- Seen in the simulator folded only (with a temporary fake-listening switch, removed before installing): glow hugs
-  the screen edge and runs behind the tab pill; orb and words sit right. Open pose NOT checked (Kyle stopped the
-  testing). Installed on Kyle's iPhone 16 Pro Max Oct 21; not yet seen there. Duo arrives Friday.
+- Kyle tried a moving-orb talk button (commit 0e7bc8b) and disliked it ("looks strange"): reverted to the earlier
+  listening panel (red dot, "Listening", live words, X and send, blue mic button).
+- Kept from that try: `EdgeGlow` (AskView.swift), a soft glow in Claude's colors round the edge of the whole screen
+  while listening, slowly turning, thicker and brighter with your voice. On the NavigationStack so the open Duo's
+  title bar doesn't cover its top; ignores touches; corner radius 54.
+- The moving bars felt "cheesy": replaced by `VoiceWave`, three thin flowing lines (app blue) that taper at both
+  ends, calm when quiet and taller as you talk. Both stop moving with Reduce Motion on.
+- Installed on Kyle's iPhone 16 Pro Max Oct 21, not yet seen there. Simulator can't run the speech engine; the
+  glow was seen folded (with a temporary fake-listening switch, since removed); the wave and the open Duo were not.
 
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
