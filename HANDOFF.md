@@ -290,7 +290,10 @@ the download a late progress update set the state back to "Downloading voice 100
 text flipped to a jumbled agent list (Whisper's in-progress text includes the name hint), and the send waited on the
 running pass. Fixed: the name hint is gone entirely (it also cost ~200 extra tokens per pass; Kyle: Whisper shouldn't
 need it), and letting go stops the running pass (`Flag`, the callback returns false) before the final read. Installed
-on Kyle's iPhone, not yet tried there. If still slow on the phone, consider a smaller/faster Whisper model (ask first). `devicectl ... launch --console` restarts the app on
+on Kyle's iPhone, not yet tried there. If still slow on the phone, consider a smaller/faster Whisper model (ask first).
+On the phone the first "Getting voice ready" took minutes (iOS preparing the 626 MB model for the Neural Engine;
+it may redo this after an app reinstall). Kyle (Oct 21): fine if it's a one-time wait; keep the large model. Option
+if it bites: `openai_whisper-small.en_217MB` (much faster to prepare and run, a bit less accurate on names). `devicectl ... launch --console` restarts the app on
 the phone each time; don't use it without asking Kyle.
 
 Not checked, and why:
