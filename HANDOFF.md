@@ -250,8 +250,9 @@ both and they're gone, back to iOS's side pill. Learned: on the folded Duo the r
 vertical bar area (clock, battery, back and toolbar buttons, tabs), so hiding the tabs doesn't give the width back;
 only moving all bars to the top and bottom would. Instead, to fill the folded screen: no title row on the Today,
 Listings, Customers, Money and Settings front pages (`.foldedTitleHidden()` in `Views/WideViews.swift`; Money's
-Stripe mark moves into the page), and the folded gutter is 14 instead of 18 (`Gutter.of`). Ask keeps its title row
-(the Claude label and new-question button hang off it). Checked in the simulator, folded.
+Stripe mark moves into the page), and the folded gutter is 14 instead of 18 (`Gutter.of`). Ask too (Kyle asked): folded,
+its title row is gone, the new-question button sits at the left of the input bar, and the "Claude" label shows only
+on the open Duo (the spark is beside every answer). Checked in the simulator, folded.
 
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the

@@ -57,7 +57,11 @@ struct AskView: View {
             .sensoryFeedback(.impact(weight: .light), trigger: sendTick)
             .sensoryFeedback(.impact(weight: .medium), trigger: micTick)
             .slimBar("Ask")
+            // Folded: no title row, like the other front pages. The new-question button moves into the input bar
+            // and Claude's spark is already beside every answer.
+            .foldedTitleHidden()
             .toolbar {
+                if size == .regular {
                 TitleBarMark {
                     HStack(spacing: 5) {
                         ClaudeMark(size: 16)
@@ -68,7 +72,8 @@ struct AskView: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Answers by Claude")
                 }
-                if !turns.isEmpty {
+                }
+                if !turns.isEmpty && size == .regular {
                     ToolbarItem(placement: .primaryAction) {
                         Button { newConversation() } label: { Label("New question", systemImage: "square.and.pencil") }
                     }
@@ -203,6 +208,19 @@ struct AskView: View {
                     .transition(.opacity)
             }
             HStack(spacing: 8) {
+                if size != .regular, !turns.isEmpty, !listening, voice.phase != .transcribing,
+                   draft.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Button { newConversation() } label: {
+                        Image(systemName: "square.and.pencil")
+                            .font(.body.weight(.semibold))
+                            .frame(width: 38, height: 38)
+                            .background(Color(.tertiarySystemFill), in: Circle())
+                            .foregroundStyle(Theme.accent)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("New question")
+                    .padding(.leading, -10)
+                }
                 if listening || voice.phase == .transcribing {
                     ListeningBar(level: voice.level, text: voice.liveText, transcribing: voice.phase == .transcribing)
                         .frame(maxWidth: .infinity, alignment: .leading)
