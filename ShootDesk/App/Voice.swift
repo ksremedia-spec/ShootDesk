@@ -33,7 +33,10 @@ final class VoiceInput {
 
     private var session: AnyObject?   // a LiveSession on iOS 26+
     private var silenceTask: Task<Void, Never>?
-    private var lastSoundAt = Date()
+    /// When you last said something: new words from the recognizer, or a sound well above the room's own noise.
+    private var lastHeardAt = Date()
+    /// The room's background loudness, learned as you talk (so a noisy room doesn't count as talking).
+    private var noiseFloor: Float = 1
 
     init() {
         // The old WhisperKit model (606 MB) is no longer used: give the space back.
@@ -57,7 +60,8 @@ final class VoiceInput {
         settledText = ""; guessText = ""
         levels = Array(repeating: 0, count: levels.count)
         phase = .listening
-        lastSoundAt = Date()
+        lastHeardAt = Date()
+        noiseFloor = 1
         Task {
             guard await AVAudioApplication.requestRecordPermission() else {
                 phase = .failed("ShootDesk isn't allowed to use the microphone. Turn it on in Settings > ShootDesk.")
@@ -69,13 +73,17 @@ final class VoiceInput {
                 try await live.start(
                     onText: { [weak self] settled, guess in
                         guard let self else { return }
+                        let before = self.text
                         if !settled.isEmpty { self.settledText = [self.settledText, settled].filter { !$0.isEmpty }.joined(separator: " ") }
                         self.guessText = guess
+                        if self.text != before { self.lastHeardAt = Date() }
                     },
                     onLevel: { [weak self] level in
                         guard let self else { return }
                         self.levels.removeFirst(); self.levels.append(level)
-                        if level > 0.08 { self.lastSoundAt = Date() }
+                        // The floor drops straight to the quietest moment and creeps back up slowly.
+                        self.noiseFloor = level < self.noiseFloor ? level : self.noiseFloor + 0.002
+                        if level > self.noiseFloor + 0.25 { self.lastHeardAt = Date() }
                     })
             } catch {
                 session = nil
@@ -88,14 +96,15 @@ final class VoiceInput {
 
     private var isFailed: Bool { if case .failed = phase { return true }; return false }
 
-    /// After something's been said, 2 seconds of quiet sends it.
+    /// After something's been said, 2 seconds with no new words (and nothing louder than the room) sends it.
+    /// (Until Oct 21 this went by loudness alone, so a noisy room never counted as quiet.)
     private func watchForQuiet() {
         silenceTask?.cancel()
         silenceTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 150_000_000)
                 guard let self, self.phase == .listening else { return }
-                if !self.text.isEmpty, Date().timeIntervalSince(self.lastSoundAt) >= 2 {
+                if !self.text.isEmpty, Date().timeIntervalSince(self.lastHeardAt) >= 2 {
                     let q = await self.finish()
                     if !q.isEmpty { self.onAutoSend?(q) }
                     return
@@ -213,8 +222,11 @@ final class LiveSession {
                 continuation.yield(AnalyzerInput(buffer: converted))
             }
         }
-        engine.prepare()
-        try engine.start()
+        let engine = self.engine
+        try await Task.detached(priority: .userInitiated) {
+            engine.prepare()
+            try engine.start()
+        }.value
     }
 
     func finish() async {

@@ -333,6 +333,11 @@ on-device engine and tap-to-talk (he dislikes holding), auto-send after 2 s of q
   to "…". Smaller: X, wave and send on one row (36 pt buttons), 12 pt padding, 38 pt in from each side folded,
   460 pt max open. Sending: the words were cleared the instant it sent, so the panel collapsed as it faded; they
   now stay until the next tap (`VoiceInput.finish`/`cancel`).
+- Kyle: the glow "comes in stages", and it didn't auto-send in a noisy room. Fixes: the glow fades itself in over
+  0.7 s (its animation no longer covers the whole stack) and the mic engine also starts off the main thread now, so
+  nothing stalls the fade. Auto-send used to need the level under a fixed 0.08 (about -51 dB), which room noise
+  never reaches; now it's 2 s with no new words from the recognizer and nothing louder than the room's own noise
+  (a floor learned while listening, +0.25) (`VoiceInput.lastHeardAt`, `noiseFloor`).
 - Installed on Kyle's iPhone 16 Pro Max Oct 21. Simulator can't run the speech engine; the glow was seen folded
   (with a temporary fake-listening switch, since removed); the latest panel and the open Duo were not.
 

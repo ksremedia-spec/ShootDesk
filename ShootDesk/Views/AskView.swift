@@ -93,9 +93,14 @@ struct AskView: View {
         // Listening: a glow in Claude's colors around the edge of the screen that swells with your voice.
         // On the stack, not the page, so the title bar on the open Duo doesn't hide the top of it.
         .overlay {
-            if listening { EdgeGlow(level: voiceLevel).transition(.opacity) }
+            ZStack {
+                if listening {
+                    EdgeGlow(level: voiceLevel)
+                        .transition(.asymmetric(insertion: .identity, removal: .opacity))
+                }
+            }
+            .animation(.easeOut(duration: 0.5), value: listening)
         }
-        .animation(.easeInOut(duration: 0.45), value: listening)
     }
 
     /// Open Duo, left half: ideas to ask, and the questions asked so far.
@@ -262,7 +267,7 @@ struct AskView: View {
 
     /// Loudness right now, 0...1 (the last few readings averaged so the glow doesn't flicker).
     private var voiceLevel: CGFloat {
-        let recent = voice.levels.suffix(3)
+        let recent = voice.levels.suffix(4)
         return CGFloat(recent.reduce(0, +) / Float(max(1, recent.count)))
     }
 
@@ -516,6 +521,7 @@ private enum VoiceColors {
 struct EdgeGlow: View {
     var level: CGFloat
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shown = false
 
     var body: some View {
         TimelineView(.animation(paused: reduceMotion)) { tl in
@@ -527,9 +533,11 @@ struct EdgeGlow: View {
                 edge.strokeBorder(colors, lineWidth: 8 + level * 24).blur(radius: 10 + level * 14)
                 edge.strokeBorder(colors, lineWidth: 2 + level * 3).blur(radius: 1.5)
             }
-            .animation(.easeOut(duration: 0.12), value: level)
+            .animation(.easeOut(duration: 0.18), value: level)
         }
         .ignoresSafeArea()
+        .opacity(shown ? 1 : 0)
+        .onAppear { withAnimation(.easeOut(duration: 0.7)) { shown = true } }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
