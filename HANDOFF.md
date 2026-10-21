@@ -393,6 +393,11 @@ typing an address into Book a shoot (the simulator wouldn't take typing from aut
 
 ## Parked ideas (Kyle has NOT asked for these; raise, don't build)
 
+- TABLED Oct 21 by Kyle ("probably unneeded for now"): real push notifications. Today every alert (leave now,
+  7 AM briefing, missing video/floor plan) and the Lock Screen countdown are scheduled on the phone when the app
+  runs, so a booking made in Aryeo while the app is closed isn't announced until the next refresh. True push would
+  need a small always-on server (Aryeo webhook -> Apple's push service).
+
 - PARKED Oct 20 at Kyle's request: add and delete listing photos from the app, the way Aryeo Go does. Checked Oct 20:
   Aryeo's public API (docs.aryeo.com/api/aryeo, and their Go SDK) has no endpoint to upload, delete or reorder
   listing images; it can only read them (it can update and delete videos). Aryeo Go uses Aryeo's private API.
