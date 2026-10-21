@@ -2,8 +2,8 @@
 
 ShootDesk is Kyle Silva's personal iPhone app (Horizon Home Media, real-estate photography) that replaces
 Aryeo Go, built for the iPhone Duo. Project on the Mac: `~/Documents/ShootDesk-github`, a clone of GitHub made Oct 19.
-(The older `~/Documents/ShootDesk` is NOT a git clone of the repo; it may hold work that never reached GitHub. Not yet
-compared; ask Kyle before touching it.) Read `CLAUDE.md` for the rules and the
+(The older `~/Documents/ShootDesk` is NOT a git clone of the repo. Compared Oct 20: an older copy, nothing in it is
+missing here; still ask Kyle before deleting it.) Read `CLAUDE.md` for the rules and the
 design system; `README.md` says what the app does. This file is the state of play and the to-do list.
 
 Kyle is not a programmer. Plain English. Label everything as verified / assumed / unknown. Change only what
@@ -15,8 +15,13 @@ on a real phone". He hates fix loops.
 
 Until Oct 17 the app was built and checked screen by screen in the iPhone Duo simulator (Xcode 27.1, iOS 27.1),
 folded and open, light and dark. The Duo itself arrives on launch day (Kyle, Oct 19; date not given). Meanwhile Kyle
-runs the app on his regular iPhone, installed from Xcode (told Oct 20); his Oct 20 screenshots show his real data
-there (Listings tab, bottom tab bar with "More"). That phone can't show anything Duo-specific (folding, the open
+runs the app on his regular iPhone (iPhone 16 Pro Max), first installed from Xcode on Oct 19 from the OLD folder
+`~/Documents/ShootDesk`. Compared Oct 20 (read only): that folder is an older copy (files last changed Oct 15-16),
+before the Oct 17 changes; nothing in it is missing here. On Oct 20 a session built this project (commit a41f149
+plus nothing else) for the phone and installed it over the old one: `xcodebuild ... -destination
+'id=00008140-0002190E11E1801C' DEVELOPMENT_TEAM=6YCK9MG5RD -allowProvisioningUpdates build`, then
+`xcrun devicectl device install app` and `device process launch` (the team id is from Kyle's own Oct 19 phone build;
+`project.yml` still leaves DEVELOPMENT_TEAM empty). Installed and launched; not looked at on the phone by Claude. That phone can't show anything Duo-specific (folding, the open
 layout, the side tab pill), and nothing on it has been checked systematically yet; only what Kyle reports.
 
 On Oct 17 a batch of changes was written WITHOUT a Mac available. That night they compiled for the first time,
