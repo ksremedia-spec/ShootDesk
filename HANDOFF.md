@@ -344,8 +344,11 @@ on-device engine and tap-to-talk (he dislikes holding), auto-send after 2 s of q
   changes opacity (core ring brighter, wide halo comes up). Before, thickness and blur followed the voice, which
   re-blurred the full screen every frame. Sending: `LiveSession.stopMic` and giving the audio session back now run
   off the main thread (the release isn't waited for).
-- Installed on Kyle's iPhone 16 Pro Max Oct 21. Simulator can't run the speech engine; this glow version and the
-  open Duo were not seen by me.
+- Installed on Kyle's iPhone 16 Pro Max Oct 21.
+- Duo simulator layout check, Oct 21 (temporary fake-listening switch, removed; voice itself not tested): folded,
+  the panel sits clear of the tab pill, words wrap, glow follows the corners; unfolding mid-question keeps
+  listening, the panel centers in the chat column at 460 pt, the glow hugs the open screen and covers the title
+  bar. Nothing changed. On the small folded screen the wide halo tints more of the page than on the 16 Pro Max.
 
 ## Oct 21: Ask starts fresh (Kyle: long threads would pile up; he doesn't want saved chats)
 
