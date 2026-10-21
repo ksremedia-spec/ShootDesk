@@ -167,7 +167,7 @@ struct PhotosCard: View {
                 .disabled(saver.state.isBusy)
 
                 if let onKit = onKit, job.status == .delivered || job.status == .editing {
-                    Button(action: onKit) { Label("Listing kit", systemImage: "sparkles") }
+                    Button(action: onKit) { Label { Text("Listing kit") } icon: { ClaudeMark(size: 17) } }
                         .buttonStyle(PrimaryActionStyle(prominent: false))
                 }
             }

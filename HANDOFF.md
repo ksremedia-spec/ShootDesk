@@ -193,7 +193,8 @@ Claude logo: Kyle decided (Oct 20) to use the official Claude spark in his perso
 trademark guidelines ask for approval and that the repo is public. File: `favicon.svg` from claude.ai (2,558 bytes,
 the spark in #D97757), stored as `Resources/Assets.xcassets/ClaudeSpark.imageset/claude.svg`; `ClaudeMark` in
 `Views/Components.swift` draws it. Used: Ask's title bar ("Claude" label), Ask's intro, beside each answer (it turns
-gently while Claude writes), and the Listing kit button ("Write it with Claude", white). Kyle decided (Oct 20) to keep
+gently while Claude writes), the shoot page's Listing kit button (orange spark), and Listing kit's own button
+("Write it with Claude", white). Kyle decided (Oct 20) to keep
 the app icon as it is: no spark on it.
 The Stripe mark (Money) and the Claude label (Ask) looked boxed in: iOS 26+ puts a glass bubble behind every
 title-bar item. `TitleBarMark` (`Views/Components.swift`) turns it off (`sharedBackgroundVisibility(.hidden)`).
