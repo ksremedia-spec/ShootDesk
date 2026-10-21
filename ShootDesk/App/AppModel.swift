@@ -128,31 +128,50 @@ final class AppModel {
         guard hasAryeoKey, !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
+        let client = AryeoClient(key: aryeoKey)
+        let store = self.store
+        var freshened = false
+        // The twice-a-day full download (every order) takes about a minute. Grab the newest orders first
+        // so what's on screen is current within seconds, then let the full download follow.
+        if !full, store.needsFullSync, !store.orders.isEmpty {
+            do {
+                try await store.quickRefresh(using: client)
+                applyFreshOrders()
+                freshened = true
+            } catch {
+                errorMessage = error.localizedDescription
+                return
+            }
+        }
         do {
-            let client = AryeoClient(key: aryeoKey)
-            let store = self.store
             try await store.refresh(using: client, forceFull: full)
-            rebuild()
-            // A widget tap for an order that still isn't here after a fresh download: drop it,
-            // so it can't jump to that shoot later out of nowhere.
-            if let id = openShootID, !jobs.contains(where: { $0.id == id }) { openShootID = nil }
-            lastUpdated = Date()
-            errorMessage = nil
-            if flagsRanAt.map({ Date().timeIntervalSince($0) > 30 * 60 }) ?? true {
-                Task { await checkDeliveries() }
-            }
-            if moneyRanAt.map({ Date().timeIntervalSince($0) > 10 * 60 }) ?? true {
-                Task { await refreshMoney() }
-            }
-            if leaveRanAt.map({ Date().timeIntervalSince($0) > 10 * 60 }) ?? true {
-                Task { await updateLeaveTimes() }
-            }
-            if checkRanAt.map({ Date().timeIntervalSince($0) > 30 * 60 }) ?? true {
-                // Runs on its own so the refresh spinner doesn't wait on the weather calls.
-                Task { await runCheck() }
-            }
+            applyFreshOrders()
         } catch {
-            errorMessage = error.localizedDescription
+            // If the quick pass already worked, the screen is current; the full download tries again next time.
+            if !freshened { errorMessage = error.localizedDescription }
+        }
+    }
+
+    /// After a download: rebuild the lists, stamp the time and start the follow-up checks that are due.
+    private func applyFreshOrders() {
+        rebuild()
+        // A widget tap for an order that still isn't here after a fresh download: drop it,
+        // so it can't jump to that shoot later out of nowhere.
+        if let id = openShootID, !jobs.contains(where: { $0.id == id }) { openShootID = nil }
+        lastUpdated = Date()
+        errorMessage = nil
+        if flagsRanAt.map({ Date().timeIntervalSince($0) > 30 * 60 }) ?? true {
+            Task { await checkDeliveries() }
+        }
+        if moneyRanAt.map({ Date().timeIntervalSince($0) > 10 * 60 }) ?? true {
+            Task { await refreshMoney() }
+        }
+        if leaveRanAt.map({ Date().timeIntervalSince($0) > 10 * 60 }) ?? true {
+            Task { await updateLeaveTimes() }
+        }
+        if checkRanAt.map({ Date().timeIntervalSince($0) > 30 * 60 }) ?? true {
+            // Runs on its own so the refresh spinner doesn't wait on the weather calls.
+            Task { await runCheck() }
         }
     }
 

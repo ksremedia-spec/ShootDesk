@@ -123,6 +123,18 @@ folded: the Oct 2 row (298 Potomska Rd, 270 Tinkham St) lines up with the rows a
 rows (date cards with the time label) look the same as before. Not checked: the open Duo (Device Hub's window came
 back without pose buttons), and on Kyle's iPhone (needs the new build installed there).
 
+Oct 20, reported by Kyle on his iPhone, FIXED: after a night away, Today's "Recently delivered" and "Updated 12 hours
+ago" stayed old after opening. Cause (verified in the simulator by backdating `sync.json` 12.5 hours): opening the
+app after 12+ hours starts the full download of every order (`OrderStore.needsFullSync`), which took 63 to 79
+seconds here, and nothing on screen changed until it finished; leaving the app in that minute stops it and the next
+open starts over. Fix (`App/AppModel.swift` `refresh`): when a full download is due, grab the newest 100 orders
+first (`quickRefresh`) and update the screen, then do the full download; if only the full one fails, no error is
+shown. Follow-up checks (deliveries, Stripe, drive times, the upcoming check) now start after the first download
+that works (`applyFreshOrders`). Today's footer says "Updating… (last updated ...)" only while what's on screen is
+more than 5 minutes old. Checked in the simulator: newest orders saved 10 seconds after launch (was 63), full
+download done at 79; footer "Updated 3 seconds ago" with the full download still going. Installed on Kyle's iPhone Oct 20 (it was locked, so it didn't open by itself). Not seen: the brief
+"Updating…" line (over too fast to screenshot). Not checked on the phone yet beyond installing it.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.

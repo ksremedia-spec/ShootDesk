@@ -232,6 +232,10 @@ struct TodayView: View {
     @ViewBuilder private var footer: some View {
         if let err = model.errorMessage {
             Label(err, systemImage: "wifi.exclamationmark").font(.footnote).foregroundStyle(.secondary)
+        } else if model.isRefreshing, let updated = model.lastUpdated, Date().timeIntervalSince(updated) > 5 * 60 {
+            // Only while what's on screen is old; the quiet full download after a fresh quick one doesn't count.
+            Text("Updating… (last updated \(updated.formatted(.relative(presentation: .named))))")
+                .font(.footnote).foregroundStyle(.tertiary)
         } else if let updated = model.lastUpdated {
             Text("Updated \(updated.formatted(.relative(presentation: .named)))")
                 .font(.footnote).foregroundStyle(.tertiary)
