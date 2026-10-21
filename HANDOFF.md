@@ -14,7 +14,10 @@ on a real phone". He hates fix loops.
 ## Where things stand
 
 Until Oct 17 the app was built and checked screen by screen in the iPhone Duo simulator (Xcode 27.1, iOS 27.1),
-folded and open, light and dark. Nothing has run on a real phone yet; Kyle will have his Duo in hand on launch day (told Oct 19; date not given).
+folded and open, light and dark. The Duo itself arrives on launch day (Kyle, Oct 19; date not given). Meanwhile Kyle
+runs the app on his regular iPhone, installed from Xcode (told Oct 20); his Oct 20 screenshots show his real data
+there (Listings tab, bottom tab bar with "More"). That phone can't show anything Duo-specific (folding, the open
+layout, the side tab pill), and nothing on it has been checked systematically yet; only what Kyle reports.
 
 On Oct 17 a batch of changes was written WITHOUT a Mac available. That night they compiled for the first time,
 on GitHub's cloud Mac (Actions runs #1 and #2 both green; full log of #2, commit af08ecf, read line by line:
@@ -281,6 +284,7 @@ the page's Share menu); the same file is in the repo and opens in any browser.
 
 ## Not checked anywhere yet
 
+(The app now runs on Kyle's regular iPhone, see "Where things stand", but none of these have been tried there yet.)
 Siri, widgets, notifications, the Live Activity, quick actions, haptics and real drive times on a real phone;
 typing an address into Book a shoot (the simulator wouldn't take typing from automation); an actual booking.
 
