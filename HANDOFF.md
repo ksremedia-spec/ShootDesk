@@ -278,6 +278,18 @@ Screen card kept counting after leaving the app (iOS asked "allow Live Activitie
 left for Kyle). Not seen: a video save, the Dynamic Island (the simulated Duo has none on screen), the paused case.
 The simulator's Photos now holds those 34 test copies.
 
+Oct 21, voice speed (Kyle: "writing it down is very slow", and no words while talking). Changes in `App/Voice.swift`:
+passes now read only from the last settled sentence on (`clipTimestamps`), back to back, showing words as Whisper
+writes them (progress callback); letting go waits for the running pass and reads only the tail. A log line per pass
+("ShootDesk voice: pass ...", plus "model ready after N s" and "final text N s after letting go"). Measured in the
+simulator before the change: 14.3 s from letting go to text, no words while talking; model loads in 14 s. After the
+change, NOT measured: the simulator's mic didn't reliably hear the Mac's speaker, and the simulator runs the model on
+the Mac's CPU (a phone uses the Neural Engine), so it's the worst case. Bug found on Kyle's iPhone and fixed: after
+the download a late progress update set the state back to "Downloading voice 100%", so voice never became ready
+(workaround: close and reopen the app). Set-up now shows "Getting voice ready…". Next: Kyle tests on the phone; if
+still slow, consider a smaller/faster Whisper model (ask first). `devicectl ... launch --console` restarts the app on
+the phone each time; don't use it without asking Kyle.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.

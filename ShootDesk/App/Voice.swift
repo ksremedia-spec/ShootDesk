@@ -28,6 +28,12 @@ final class VoiceInput {
 
     private var kit: WhisperKit?
     private var hint = ""
+    /// What's settled so far while you talk: earlier sentences Whisper won't change, and where they end in the
+    /// recording. Each pass only re-reads from there, so passes stay short however long you talk.
+    private var confirmedText = ""
+    private var confirmedEnd: Float = 0
+    /// How much of the recording the last pass covered (samples).
+    private var coveredSamples = 0
     private var liveTask: Task<Void, Never>?
     private var levelTask: Task<Void, Never>?
 
@@ -71,7 +77,8 @@ final class VoiceInput {
         do {
             let folder = try await WhisperKit.download(variant: Self.variant, downloadBase: Self.base) { progress in
                 let f = progress.fractionCompleted
-                Task { @MainActor in self.phase = .downloading(f) }
+                // Progress updates can arrive late; never let one put a finished download back to "downloading".
+                Task { @MainActor in if case .downloading = self.phase { self.phase = .downloading(f) } }
             }
             let full = folder.standardizedFileURL.path, root = Self.base.standardizedFileURL.path + "/"
             UserDefaults.standard.set(full.hasPrefix(root) ? String(full.dropFirst(root.count)) : full, forKey: Self.folderKey)
@@ -89,7 +96,9 @@ final class VoiceInput {
         do {
             let config = WhisperKitConfig(modelFolder: folder.path, verbose: false, logLevel: .error,
                                           prewarm: true, load: true, download: false)
+            let t0 = Date()
             kit = try await WhisperKit(config)
+            NSLog("ShootDesk voice: model ready after %.0f s", Date().timeIntervalSince(t0))
             phase = .ready
         } catch {
             phase = .failed("Couldn't load the voice model: \(error.localizedDescription)")
@@ -98,6 +107,7 @@ final class VoiceInput {
 
     /// Finger down: start recording. Returns false if the mic isn't allowed or the model isn't ready.
     func start(hint: String) async -> Bool {
+        NSLog("ShootDesk voice: hold, phase %@", "\(phase)")
         guard phase == .ready, let kit else { return false }
         guard await AudioProcessor.requestRecordPermission() else {
             phase = .failed("ShootDesk isn't allowed to use the microphone. Turn it on in Settings > ShootDesk.")
@@ -105,6 +115,9 @@ final class VoiceInput {
         }
         self.hint = hint
         liveText = ""
+        confirmedText = ""
+        confirmedEnd = 0
+        coveredSamples = 0
         do {
             try kit.audioProcessor.startRecordingLive(inputDeviceID: nil, callback: nil)
         } catch {
@@ -112,13 +125,16 @@ final class VoiceInput {
             return false
         }
         phase = .listening
-        // Show the words as they come: re-read the whole recording about once a second while it's held.
+        // Words as you talk: pass after pass, back to back, each starting where the settled part ends, and the
+        // words shown as Whisper writes them, not when a pass finishes.
         liveTask = Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 1_100_000_000)
-                guard let self, !Task.isCancelled, self.phase == .listening else { return }
-                let text = await self.transcribeCurrent()
-                if !Task.isCancelled, self.phase == .listening, !text.isEmpty { self.liveText = text }
+            while let self, self.phase == .listening {
+                let fresh = kit.audioProcessor.audioSamples.count - self.coveredSamples
+                if fresh < 16_000 / 2 {   // under half a second of new sound: wait for more
+                    try? await Task.sleep(nanoseconds: 120_000_000)
+                    continue
+                }
+                await self.pass(settle: true)
             }
         }
         levelTask = Task { [weak self] in
@@ -138,9 +154,15 @@ final class VoiceInput {
         kit.audioProcessor.stopRecording()
         level = 0
         phase = .transcribing
-        // Let a live pass that's already running finish first: one transcription at a time.
+        // One pass at a time: let the one that's running finish (it already covers nearly everything), then
+        // read only what came after it, from the settled point. Usually a second or two of sound.
         await liveTask?.value
-        let text = await transcribeCurrent()
+        let started = Date()
+        if kit.audioProcessor.audioSamples.count - coveredSamples > 16_000 / 4 || liveText.isEmpty {
+            await pass(settle: false)
+        }
+        NSLog("ShootDesk voice: final text %.1f s after letting go", Date().timeIntervalSince(started))
+        let text = liveText
         liveText = ""
         phase = .ready
         return text
@@ -168,22 +190,56 @@ final class VoiceInput {
         if case .failed = phase { phase = kit != nil ? .ready : (isDownloaded ? .preparing : .needsDownload) }
     }
 
-    private func transcribeCurrent() async -> String {
-        guard let kit else { return "" }
+    /// One read of the recording from the settled point on. While you're still talking (`settle`), every
+    /// sentence but the last is settled, so the next pass starts after it.
+    private func pass(settle: Bool) async {
+        guard let kit else { return }
         let samples = Array(kit.audioProcessor.audioSamples)
-        guard samples.count > 16_000 / 3 else { return "" }   // under a third of a second: nothing said
-        var options = DecodingOptions(language: "en", skipSpecialTokens: true, withoutTimestamps: true)
+        guard samples.count > 16_000 / 3 else { return }   // under a third of a second: nothing said
+        coveredSamples = samples.count
+        var options = DecodingOptions(language: "en", skipSpecialTokens: true, withoutTimestamps: false)
+        options.clipTimestamps = [confirmedEnd]
         if let tok = kit.tokenizer, !hint.isEmpty {
             // Names and towns Whisper should expect, so "Rebello" doesn't come out "Rebel low".
             let tokens = tok.encode(text: " " + hint).filter { $0 < tok.specialTokens.specialTokenBegin }
             options.promptTokens = Array(tokens.suffix(200))
         }
-        let results = (try? await kit.transcribe(audioArray: samples, decodeOptions: options)) ?? []
-        return Self.clean(results.map(\.text).joined(separator: " "))
+        let settledSoFar = confirmedText
+        let t0 = Date()
+        var results: [TranscriptionResult] = []
+        do {
+            results = try await kit.transcribe(audioArray: samples, decodeOptions: options, callback: { progress in
+                let partial = Self.clean(progress.text)
+                Task { @MainActor [weak self] in
+                    guard let self, !partial.isEmpty else { return }
+                    self.liveText = Self.join(settledSoFar, partial)
+                }
+                return nil
+            })
+        } catch {
+            NSLog("ShootDesk voice: pass failed: %@", "\(error)")
+        }
+        NSLog("ShootDesk voice: pass %.1f s of sound from %.1f s, took %.1f s, %d segments: %@",
+              Double(samples.count) / 16_000, Double(confirmedEnd), Date().timeIntervalSince(t0),
+              results.flatMap(\.segments).count, results.map(\.text).joined(separator: " | "))
+        let segments = results.flatMap(\.segments).filter { $0.end > confirmedEnd }
+        if settle, segments.count > 1 {
+            let done = segments.dropLast()
+            confirmedText = Self.join(confirmedText, Self.clean(done.map(\.text).joined(separator: " ")))
+            confirmedEnd = done.last?.end ?? confirmedEnd
+            liveText = Self.join(confirmedText, Self.clean(segments.last?.text ?? ""))
+        } else {
+            let rest = Self.clean(segments.map(\.text).joined(separator: " "))
+            if !rest.isEmpty || settle == false { liveText = Self.join(confirmedText, rest) }
+        }
+    }
+
+    nonisolated private static func join(_ a: String, _ b: String) -> String {
+        [a, b].filter { !$0.isEmpty }.joined(separator: " ")
     }
 
     /// Whisper marks silence as "[BLANK_AUDIO]" and similar; drop those and tidy the spaces.
-    static func clean(_ s: String) -> String {
+    nonisolated static func clean(_ s: String) -> String {
         var t = s.replacingOccurrences(of: "\\[[^\\]]*\\]", with: "", options: .regularExpression)
         t = t.replacingOccurrences(of: "\\([^)]*\\)", with: "", options: .regularExpression)
         t = t.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)

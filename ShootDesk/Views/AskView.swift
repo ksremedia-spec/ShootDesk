@@ -251,8 +251,9 @@ struct AskView: View {
     private var voiceStatusLine: String? {
         if let voiceNote { return voiceNote }
         switch voice.phase {
+        case .downloading(let f) where f >= 0.999: return "Download done. Setting up voice…"
         case .downloading(let f): return "Downloading voice… \(Int(f * 100))%"
-        case .preparing where holding: return "Getting voice ready… the first time can take a couple of minutes"
+        case .preparing: return "Getting voice ready… the first time can take a couple of minutes"
         case .listening: return "Let go to send, slide up to cancel"
         case .ready where turns.isEmpty && !thinking: return "Hold to ask"
         case .failed(let m): return m
