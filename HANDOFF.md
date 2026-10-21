@@ -244,11 +244,14 @@ measured width. Not seen on a real Duo.
 
 Oct 21, Kyle: (1) the old Missing reminder still showed on his phone, because the "one day" counted from the
 first launch of the new build. Now a flag shows only while the shoot ended 2-3 days ago (and at most 24 hours from
-first sighting), so older ones are gone at once; CLAUDE.md rule updated. (2) Folded Duo: the tab bar is a normal
-bottom bar instead of iOS 27.1's vertical pill down the right edge, which took a big slice of the narrow screen
-(`FoldedBottomTabBar` in `Views/RootView.swift`, Apple's `toolbarVerticalBehavior(.disabled)`, compact width only;
-the open Duo keeps the side pill). Apple has no way to put the tab bar in a corner. Trade-off: a bottom bar holds
-five tabs, so Ask and Settings sit under "More" on the folded screen. Checked in the simulator, folded.
+first sighting), so older ones are gone at once; CLAUDE.md rule updated. (2) Folded tab bar: tried a bottom bar
+(`toolbarVerticalBehavior(.disabled)`) and then a single top-right tab button with the bar hidden; Kyle disliked
+both and they're gone, back to iOS's side pill. Learned: on the folded Duo the right-hand strip is iOS 27.1's
+vertical bar area (clock, battery, back and toolbar buttons, tabs), so hiding the tabs doesn't give the width back;
+only moving all bars to the top and bottom would. Instead, to fill the folded screen: no title row on the Today,
+Listings, Customers, Money and Settings front pages (`.foldedTitleHidden()` in `Views/WideViews.swift`; Money's
+Stripe mark moves into the page), and the folded gutter is 14 instead of 18 (`Gutter.of`). Ask keeps its title row
+(the Claude label and new-question button hang off it). Checked in the simulator, folded.
 
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the

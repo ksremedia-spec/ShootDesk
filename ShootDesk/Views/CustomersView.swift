@@ -50,6 +50,7 @@ struct CustomersView: View {
                 if model.hasAryeoKey { SearchBox(text: $search, prompt: "Name, phone or email") }
             }
             .slimBar("Customers")
+            .foldedTitleHidden()
             .refreshable { await model.refresh() }
             .appDestinations(ns)
         }

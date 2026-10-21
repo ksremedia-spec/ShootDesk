@@ -56,6 +56,7 @@ struct ListingsView: View {
                 else { page }
             }
             .slimBar("Listings")
+            .foldedTitleHidden()
             // Gallery or map, like Photos' Years / Months / All: a plain switch above the content.
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(spacing: 0) {

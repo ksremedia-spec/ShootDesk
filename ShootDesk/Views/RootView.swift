@@ -28,7 +28,6 @@ struct RootView: View {
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(AppTab.settings)
         }
-        .modifier(FoldedBottomTabBar())
         .onAppear {
             if !model.hasAryeoKey { tab = .settings }
             if model.openShootID != nil || model.openTonight || model.openBooking || model.openAvailability { tab = .today }
@@ -47,19 +46,5 @@ struct RootView: View {
         }
         .onChange(of: model.openBooking) { _, open in if open { tab = .today } }
         .onChange(of: model.openAvailability) { _, open in if open { tab = .today } }
-    }
-}
-
-/// Folded Duo: iOS 27.1 puts the tab bar in a pill down the right edge, which costs the narrow front screen a lot
-/// of its width. Kyle chose (Oct 21) a normal bar along the bottom there instead, using Apple's own switch. The open
-/// Duo keeps the side pill.
-struct FoldedBottomTabBar: ViewModifier {
-    @Environment(\.horizontalSizeClass) private var size
-    func body(content: Content) -> some View {
-        if #available(iOS 27.1, *), size == .compact {
-            content.toolbarVerticalBehavior(.disabled)
-        } else {
-            content
-        }
     }
 }

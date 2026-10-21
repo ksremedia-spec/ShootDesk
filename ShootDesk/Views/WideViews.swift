@@ -40,6 +40,11 @@ extension View {
         navigationDestination(for: AppRoute.self) { AppDestination(route: $0, ns: ns) }
     }
 
+    /// Folded Duo: no title row on a tab's front page. The tab bar already says where you are, and on the narrow
+    /// front screen that row is a strip of space with a single word in it (Kyle, Oct 21). Only for pages with no
+    /// title-bar buttons; pages you open from it keep their bar and back button.
+    func foldedTitleHidden() -> some View { modifier(FoldedTitleHidden()) }
+
     /// Small solid header bar (no big title, nothing showing through it).
     /// A small, solid title bar. `grouped` matches the grey of a Settings-style list in light mode.
     func slimBar(_ title: String, grouped: Bool = false) -> some View {
@@ -113,4 +118,11 @@ struct CustomersTable: View {
 
     /// Whole dollars: $19,565, not $19,565.40.
     private func whole(_ cents: Int) -> String { Money.dollars((cents / 100) * 100) }
+}
+
+struct FoldedTitleHidden: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var size
+    func body(content: Content) -> some View {
+        content.toolbar(size == .compact ? .hidden : .automatic, for: .navigationBar)
+    }
 }

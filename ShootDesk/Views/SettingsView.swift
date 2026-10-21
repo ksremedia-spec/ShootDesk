@@ -42,6 +42,7 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background(Color(.systemGroupedBackground))
             .slimBar("Settings", grouped: true)
+            .foldedTitleHidden()
             .sensoryFeedback(.success, trigger: saved) { _, new in new }
             .onAppear {
                 aryeo = model.aryeoKey

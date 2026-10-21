@@ -33,8 +33,9 @@ struct MoneyView: View {
             .background(Color(.systemBackground))
             .slimBar("Money")
             .toolbar {
-                TitleBarMark { StripeMark(height: 18) }
+                if size == .regular { TitleBarMark { StripeMark(height: 18) } }
             }
+            .foldedTitleHidden()
             .refreshable { await model.refreshMoney() }
             .appDestinations(ns)
         }
@@ -143,7 +144,11 @@ struct MoneyView: View {
             VStack(alignment: .leading, spacing: 26) {
                 // The number that matters
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Received in \(month)").font(.headline).foregroundStyle(.secondary)
+                    HStack {
+                        Text("Received in \(month)").font(.headline).foregroundStyle(.secondary)
+                        // Folded, the title bar is gone, so the Stripe mark sits here instead.
+                        if !wide { Spacer(); StripeMark(height: 16) }
+                    }
                     Text(whole(thisMonth))
                         .font(.system(size: wide ? 56 : 44, weight: .semibold, design: .serif))
                         .minimumScaleFactor(0.6).lineLimit(1)

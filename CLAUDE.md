@@ -26,7 +26,7 @@ Current state, unbuilt changes and the verification list live in `HANDOFF.md`. R
 - `ShootDeskWidget/`: WidgetKit extension: Next Shoot (Home + Lock Screen), Evening Check, and the Live Activity (Lock Screen card with a leave-by countdown).
 
 **Design system (Views/Components.swift)**
-- Serif for addresses and big numbers: `Font.address(...)`. Gutters: `Gutter.of(size)` (28 open / 18 closed).
+- Serif for addresses and big numbers: `Font.address(...)`. Gutters: `Gutter.of(size)` (28 open / 14 closed; folded was 18 until Oct 21). On the folded Duo the tab front pages have no title row (`.foldedTitleHidden()`) unless they hold title-bar buttons (Ask).
 - Panels: `Theme.surface` (secondarySystemBackground) on `systemBackground` pages. Solid title bars only: `.slimBar("Title")` (no translucent bars).
 - Buttons: `PrimaryActionStyle(prominent:)`, `.pressable`. Rows of cards: `Rail`. Big forms: `.adaptiveSheet` (sheet folded, full screen open).
 - Anything that scrolls sideways goes through `SideSafeScroller` (or `Rail`, which uses it), never a bare `ScrollView(.horizontal)`. On the Duo, iOS 27 puts the tab bar in a vertical pill down the right edge and counts the strip under it as safe area; a bare horizontal scroller runs on underneath the pill.

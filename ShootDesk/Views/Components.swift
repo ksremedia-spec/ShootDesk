@@ -19,7 +19,8 @@ extension Font {
 
 /// Side margin: a little more room when the Duo is open.
 struct Gutter {
-    static func of(_ size: UserInterfaceSizeClass?) -> CGFloat { size == .regular ? 28 : 18 }
+    /// Folded: 14, so the narrow front screen keeps as much width as it can (Kyle, Oct 21; was 18).
+    static func of(_ size: UserInterfaceSizeClass?) -> CGFloat { size == .regular ? 28 : 14 }
     /// Room for a side column next to the main content (Ask's question list, Settings' second column).
     /// The open Duo held wide is about 950 points; held tall it's about 670, which is too narrow for one.
     static let sideColumnWidth: CGFloat = 820
