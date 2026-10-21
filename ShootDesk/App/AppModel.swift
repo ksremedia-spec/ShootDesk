@@ -410,9 +410,14 @@ final class AppModel {
             if !missing.isEmpty { out.append(DeliveryFlag(job: j, missing: missing)) }
         }
         // Kyle often shoots the exterior first and the rest weeks or months later, so a flag is a one-day
-        // reminder: it shows for 24 hours from when it was first found, then hides on its own.
+        // reminder: it shows on the day it first applies (2 to 3 days after the shoot) and for at most 24 hours
+        // from when the app first found it, then hides on its own. Older shoots aren't flagged at all.
         let firstSeen = FlagFirstSeen.record(out.map(\.id))
-        out = out.filter { f in firstSeen[f.id].map { Date().timeIntervalSince($0) < 24 * 3600 } ?? true }
+        out = out.filter { f in
+            guard let end = f.job.end ?? f.job.start?.addingTimeInterval(3600),
+                  end > now.addingTimeInterval(-3 * 86_400) else { return false }
+            return firstSeen[f.id].map { now.timeIntervalSince($0) < 24 * 3600 } ?? true
+        }
         deliveryFlags = out.sorted { ($0.job.start ?? .distantPast) < ($1.job.start ?? .distantPast) }
         flagsChecked = true
         await DeliveryAlerts.notify(deliveryFlags)

@@ -242,6 +242,14 @@ Duo's own fold/unfold animation (the moving half turns see-through): assumed not
 drawn by iOS over whatever the app shows, with no app API, and the fade is ordinary app content that follows the
 measured width. Not seen on a real Duo.
 
+Oct 21, Kyle: (1) the old Missing reminder still showed on his phone, because the "one day" counted from the
+first launch of the new build. Now a flag shows only while the shoot ended 2-3 days ago (and at most 24 hours from
+first sighting), so older ones are gone at once; CLAUDE.md rule updated. (2) Folded Duo: the tab bar is a normal
+bottom bar instead of iOS 27.1's vertical pill down the right edge, which took a big slice of the narrow screen
+(`FoldedBottomTabBar` in `Views/RootView.swift`, Apple's `toolbarVerticalBehavior(.disabled)`, compact width only;
+the open Duo keeps the side pill). Apple has no way to put the tab bar in a corner. Trade-off: a bottom bar holds
+five tabs, so Ask and Settings sit under "More" on the folded screen. Checked in the simulator, folded.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.

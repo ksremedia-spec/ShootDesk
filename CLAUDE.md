@@ -42,7 +42,7 @@ Current state, unbuilt changes and the verification list live in `HANDOFF.md`. R
 - Delivered = fulfillment status FULFILLED.
 - Video = title contains "video" or "cinematic", OR starts with "essentials plus", OR contains "all in lux". Drone = title contains "drone".
 - Stale = not delivered and more than 60 days old. Hidden from lists.
-- Missing-deliverable flag: shoot ended 2–30 days ago, photos delivered in Aryeo, order includes video or a floor plan that isn't delivered. It shows for one day from when it was first found, then hides itself (Kyle, Oct 21 2026: he often shoots the exterior first and the rest much later). "Not needed" dismisses it sooner.
+- Missing-deliverable flag: shoot ended 2–30 days ago, photos delivered in Aryeo, order includes video or a floor plan that isn't delivered. It is a one-day reminder: shown only while the shoot ended 2–3 days ago, and for at most 24 hours from when the app first found it, then it hides itself (Kyle, Oct 21 2026: he often shoots the exterior first and the rest much later). The 30-day outer limit no longer matters. "Not needed" dismisses it sooner.
 - Availability: 8 AM to sunset, 30 minutes kept clear before and after each shoot for driving.
 
 ## Known simulator quirks (not app bugs)
