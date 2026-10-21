@@ -69,10 +69,11 @@ public enum JSONText {
 
 public enum AskContext {
     /// A compact, current snapshot of the business for Claude to answer from.
-    /// Built fresh from live Aryeo data every time a question is asked.
+    /// Built fresh from live Aryeo data every time a question is asked. It holds no clock time, so it stays
+    /// byte-for-byte the same between follow-ups and Claude can reuse it from its cache; the time goes with
+    /// each question instead.
     public static func build(jobs: [Job], customers: [CustomerStats], now: Date = Date()) -> String {
         var lines: [String] = []
-        lines.append("Today is \(FieldTime.format(now, "EEEE, MMMM d, yyyy h:mm a")) Eastern.")
         lines.append("Money is in US dollars. 'Delivered' means the order was fulfilled. Canceled orders, $0 orders, Kyle's own orders and the Jordan Rebello test account are already excluded.")
 
         // Monthly totals by month the order was placed.
@@ -98,10 +99,10 @@ public enum AskContext {
             lines.append("\(c.name) | \(c.delivered) | \(c.revenueCents / 100) | \(c.averageCents / 100) | \(c.videoOrders) | \(first) | \(last) | \(c.group(now: now).rawValue) | \(Phone.pretty(c.phone) ?? "-")")
         }
 
-        lines.append("\nSHOOTS (order # | status | shoot date | agent | address | town | package | total)")
+        lines.append("\nSHOOTS (order # | status | shoot date | agent | address | town | package | total | photos)")
         for j in jobs.sorted(by: { ($0.start ?? FieldTime.parse($0.order.createdAt) ?? .distantPast) > ($1.start ?? FieldTime.parse($1.order.createdAt) ?? .distantPast) }) {
             let when = j.start.map { FieldTime.format($0, "yyyy-MM-dd h:mm a") } ?? "no time"
-            lines.append("\(j.number) | \(j.status.rawValue) | \(when) | \(j.agentName) | \(j.street) | \(j.town) | \(j.packageSummary) | \((j.order.totalAmount ?? 0) / 100)")
+            lines.append("\(j.number) | \(j.status.rawValue) | \(when) | \(j.agentName) | \(j.street) | \(j.town) | \(j.packageSummary) | \((j.order.totalAmount ?? 0) / 100) | \(j.images.count)")
         }
         return lines.joined(separator: "\n")
     }
@@ -112,23 +113,41 @@ public enum AskContext {
     Plain-spoken. Match the depth to the question: a quick question gets a one- or two-sentence answer; when Kyle asks for detail, analysis, a breakdown or an in-depth look, give a thorough answer, as long as it needs to be, using short paragraphs and bulleted lists (no tables, no headings). Lead with the answer. Use **bold** sparingly for names or totals.
     Use names, dates and dollar amounts from the data. Never invent numbers. Dates: "Jun 18" style.
     Aryeo amounts are what was booked; the STRIPE section (when present) is money actually received after card fees. Say which one you're using when it matters.
+    The TODAY section (sent with each question) has the current time, the next week's bookings with leave-by times, open times (8 AM to sunset, 30 minutes kept clear before and after each shoot for driving), the upcoming-shoot weather and airspace check, and shoots missing a video or floor plan. Use it for questions about the day, the week, availability and what needs attention.
+
+    The app turns a few markers in your answer into pictures. Use them like this:
+    - Right after a sentence about one specific shoot, put [[shoot 1234]] on its own line, using the order # from SHOOTS. The app shows a card Kyle can tap to open it. At most 5 per answer, only for shoots that matter to the answer.
+    - When an agent is someone Kyle might call, text or look up, put [[agent Full Name]] on its own line, with the name exactly as in AGENTS. At most 3 per answer.
+    - When a trend or a comparison is clearer as a picture (months, weeks, towns, agents, packages), add one chart, and only one, as a fenced block with up to 24 points, using only numbers from the data:
+    ```chart
+    {"kind": "bar", "title": "Booked by month", "unit": "$", "points": [{"label": "Jan", "value": 7000, "series": "2026"}]}
+    ```
+    "kind" is "bar" or "line"; "unit" is "$" for money or "" for counts; "series" is optional and groups the points (for example this year against last year).
+    - End every answer with one last line listing 2 or 3 short follow-up questions Kyle might ask next, in his own words: [[next: question one | question two | question three]]
     """
 
+    /// `today` is the TODAY section: the time now and what's happening this week. It changes from question
+    /// to question, so it rides with the question and the big data block before it stays cacheable.
     public static func ask(_ question: String, history: [(q: String, a: String)], jobs: [Job],
-                           customers: [CustomerStats], money: String? = nil, claude: ClaudeClient,
-                           onText: (@Sendable (String) -> Void)? = nil) async throws -> String {
+                           customers: [CustomerStats], money: String? = nil, today: String? = nil,
+                           claude: ClaudeClient, onText: (@Sendable (String) -> Void)? = nil) async throws -> String {
         var context = build(jobs: jobs, customers: customers)
         if let money { context += "\n\n" + money }
         let source = money == nil ? "Aryeo" : "Aryeo and Stripe"
-        var messages: [ClaudeMessage] = [.user([.text("BUSINESS DATA (live from \(source)):\n" + context)]),
+        // The data block is marked for caching: a follow-up within 5 minutes reuses it instead of re-reading it.
+        var messages: [ClaudeMessage] = [.user([.cachedText("BUSINESS DATA (live from \(source)):\n" + context)]),
                                          .assistant("Got it. Ask away.")]
         for turn in history.suffix(6) {
             messages.append(.user([.text(turn.q)]))
             messages.append(.assistant(turn.a))
         }
-        messages.append(.user([.text(question)]))
+        let now = "Now: \(FieldTime.format(Date(), "EEEE, MMMM d, yyyy h:mm a")) Eastern."
+        let todayBlock = "TODAY\n" + now + (today.map { "\n" + $0 } ?? "")
+        messages.append(.user([.text(todayBlock), .text(question)]))
         return try await claude.send(model: ClaudeClient.smart, system: system, messages: messages,
-                                     maxTokens: ClaudeClient.maxOutput, onText: onText)
+                                     maxTokens: ClaudeClient.maxOutput,
+                                     options: .init(cacheConversation: true, effort: "medium", fallback: true),
+                                     onText: onText)
     }
 }
 

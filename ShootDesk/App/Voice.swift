@@ -1,0 +1,187 @@
+import Foundation
+import WhisperKit
+
+/// Press and hold to talk in Ask. WhisperKit (Argmax) runs OpenAI's Whisper speech model on the phone:
+/// the recording never leaves it. The model is downloaded once (from Argmax's page on Hugging Face) into
+/// Application Support, kept out of iCloud backups, and loaded the first time Ask needs it.
+@MainActor @Observable
+final class VoiceInput {
+    enum Phase: Equatable {
+        case needsDownload
+        case downloading(Double)     // 0...1
+        case preparing               // loading the model; the very first load also tunes it for this phone
+        case ready
+        case listening
+        case transcribing
+        case failed(String)
+    }
+
+    /// The model Argmax recommends for iPhone ("maximum accuracy"), as named on Hugging Face.
+    static let variant = "openai_whisper-large-v3-v20240930_626MB"
+    static let sizeLabel = "626 MB"
+
+    private(set) var phase: Phase = .needsDownload
+    /// What Whisper has heard so far while you're still holding the button.
+    private(set) var liveText = ""
+    /// 0...1, how loud the last moment of audio was (for the little level meter).
+    private(set) var level: Float = 0
+
+    private var kit: WhisperKit?
+    private var hint = ""
+    private var liveTask: Task<Void, Never>?
+    private var levelTask: Task<Void, Never>?
+
+    private static let folderKey = "whisperModelFolder"
+    private static var base: URL {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("WhisperKit", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        var d = dir
+        try? d.setResourceValues(values)
+        return dir
+    }
+    private var savedFolder: URL? {
+        guard let p = UserDefaults.standard.string(forKey: Self.folderKey) else { return nil }
+        let url = URL(fileURLWithPath: p)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    init() {
+        if savedFolder != nil { phase = .preparing }
+    }
+
+    var isDownloaded: Bool { savedFolder != nil }
+    var isBusy: Bool {
+        switch phase {
+        case .downloading, .preparing, .transcribing: return true
+        default: return false
+        }
+    }
+
+    /// The one-time download. Safe to call again after a failure; Hugging Face resumes what it can.
+    func download() async {
+        if case .downloading = phase { return }
+        phase = .downloading(0)
+        do {
+            let folder = try await WhisperKit.download(variant: Self.variant, downloadBase: Self.base) { progress in
+                let f = progress.fractionCompleted
+                Task { @MainActor in self.phase = .downloading(f) }
+            }
+            UserDefaults.standard.set(folder.path, forKey: Self.folderKey)
+            await prepare()
+        } catch {
+            phase = .failed("The voice download stopped: \(error.localizedDescription)")
+        }
+    }
+
+    /// Loads the model into memory. Seconds normally; the first time on a phone it can take a couple of minutes.
+    func prepare() async {
+        guard kit == nil else { if !isBusy { phase = .ready }; return }
+        guard let folder = savedFolder else { phase = .needsDownload; return }
+        phase = .preparing
+        do {
+            let config = WhisperKitConfig(modelFolder: folder.path, verbose: false, logLevel: .error,
+                                          prewarm: true, load: true, download: false)
+            kit = try await WhisperKit(config)
+            phase = .ready
+        } catch {
+            phase = .failed("Couldn't load the voice model: \(error.localizedDescription)")
+        }
+    }
+
+    /// Finger down: start recording. Returns false if the mic isn't allowed or the model isn't ready.
+    func start(hint: String) async -> Bool {
+        guard phase == .ready, let kit else { return false }
+        guard await AudioProcessor.requestRecordPermission() else {
+            phase = .failed("ShootDesk isn't allowed to use the microphone. Turn it on in Settings > ShootDesk.")
+            return false
+        }
+        self.hint = hint
+        liveText = ""
+        do {
+            try kit.audioProcessor.startRecordingLive(inputDeviceID: nil, callback: nil)
+        } catch {
+            phase = .failed("The microphone didn't start: \(error.localizedDescription)")
+            return false
+        }
+        phase = .listening
+        // Show the words as they come: re-read the whole recording about once a second while it's held.
+        liveTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_100_000_000)
+                guard let self, !Task.isCancelled, self.phase == .listening else { return }
+                let text = await self.transcribeCurrent()
+                if !Task.isCancelled, self.phase == .listening, !text.isEmpty { self.liveText = text }
+            }
+        }
+        levelTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 80_000_000)
+                guard let self, self.phase == .listening else { return }
+                self.level = min(1, max(0, kit.audioProcessor.relativeEnergy.last ?? 0))
+            }
+        }
+        return true
+    }
+
+    /// Finger up: stop and return the final text (empty if nothing was said).
+    func stop() async -> String {
+        guard phase == .listening, let kit else { return "" }
+        liveTask?.cancel(); levelTask?.cancel()
+        kit.audioProcessor.stopRecording()
+        level = 0
+        phase = .transcribing
+        // Let a live pass that's already running finish first: one transcription at a time.
+        await liveTask?.value
+        let text = await transcribeCurrent()
+        liveText = ""
+        phase = .ready
+        return text
+    }
+
+    /// Finger slid away: throw the recording out.
+    func cancel() {
+        guard phase == .listening, let kit else { return }
+        liveTask?.cancel(); levelTask?.cancel()
+        kit.audioProcessor.stopRecording()
+        level = 0
+        liveText = ""
+        phase = .ready
+    }
+
+    func deleteModel() {
+        cancel()
+        kit = nil
+        if let folder = savedFolder { try? FileManager.default.removeItem(at: folder) }
+        UserDefaults.standard.removeObject(forKey: Self.folderKey)
+        phase = .needsDownload
+    }
+
+    func clearError() {
+        if case .failed = phase { phase = kit != nil ? .ready : (isDownloaded ? .preparing : .needsDownload) }
+    }
+
+    private func transcribeCurrent() async -> String {
+        guard let kit else { return "" }
+        let samples = Array(kit.audioProcessor.audioSamples)
+        guard samples.count > 16_000 / 3 else { return "" }   // under a third of a second: nothing said
+        var options = DecodingOptions(language: "en", skipSpecialTokens: true, withoutTimestamps: true)
+        if let tok = kit.tokenizer, !hint.isEmpty {
+            // Names and towns Whisper should expect, so "Rebello" doesn't come out "Rebel low".
+            let tokens = tok.encode(text: " " + hint).filter { $0 < tok.specialTokens.specialTokenBegin }
+            options.promptTokens = Array(tokens.suffix(200))
+        }
+        let results = (try? await kit.transcribe(audioArray: samples, decodeOptions: options)) ?? []
+        return Self.clean(results.map(\.text).joined(separator: " "))
+    }
+
+    /// Whisper marks silence as "[BLANK_AUDIO]" and similar; drop those and tidy the spaces.
+    static func clean(_ s: String) -> String {
+        var t = s.replacingOccurrences(of: "\\[[^\\]]*\\]", with: "", options: .regularExpression)
+        t = t.replacingOccurrences(of: "\\([^)]*\\)", with: "", options: .regularExpression)
+        t = t.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        return t.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}

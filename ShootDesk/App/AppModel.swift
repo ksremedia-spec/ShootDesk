@@ -42,6 +42,8 @@ final class AppModel {
 
     // Shared services
     let weather = WeatherClient()
+    /// Press-and-hold voice for Ask (WhisperKit). Lives here so a download keeps going when you change tabs.
+    let voice = VoiceInput()
     let records = PropertyRecordsClient()
     private let store: OrderStore
     @ObservationIgnored private var pollTask: Task<Void, Never>?

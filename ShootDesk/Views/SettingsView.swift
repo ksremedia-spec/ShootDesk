@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var saved = false
     @State private var claudeTest: String?
     @AppStorage("morningBriefing") private var morningBriefing = true
+    @AppStorage(AskSounds.settingKey) private var askSounds = true
 
     private var changed: Bool {
         aryeo != model.aryeoKey || claude != model.claudeKey || stripe != model.stripeKey
@@ -26,13 +27,13 @@ struct SettingsView: View {
                         Form { appearanceSection; connectionsSection; moneyErrorSection }
                             .contentMargins(.leading, 28, for: .scrollContent)
                             .contentMargins(.trailing, 14, for: .scrollContent)
-                        Form { alertsSection; dataSection; claudeSection; aboutSection }
+                        Form { alertsSection; dataSection; claudeSection; askSection; aboutSection }
                             .contentMargins(.leading, 14, for: .scrollContent)
                             // Clear of the floating tab bar on the right edge.
                             .contentMargins(.trailing, 64, for: .scrollContent)
                     }
                 } else {
-                    Form { appearanceSection; connectionsSection; moneyErrorSection; alertsSection; dataSection; claudeSection; aboutSection }
+                    Form { appearanceSection; connectionsSection; moneyErrorSection; alertsSection; dataSection; claudeSection; askSection; aboutSection }
                 }
             }
             .scrollContentBackground(.hidden)
@@ -137,6 +138,31 @@ struct SettingsView: View {
             if let t = claudeTest { Text(t).font(.footnote).foregroundStyle(.secondary) }
         } footer: {
             Text("Claude writes listing kits, answers Ask questions and drafts texts. For Ask it gets your Aryeo orders and, with Stripe connected, your Stripe totals and recent payments. It never changes anything in Aryeo or Stripe.")
+        }
+    }
+
+    /// Ask's sounds, and the voice model it downloads for press-and-hold talking.
+    private var askSection: some View {
+        Section {
+            Toggle("Sounds in Ask", isOn: $askSounds)
+            switch model.voice.phase {
+            case .needsDownload:
+                Button("Download voice (\(VoiceInput.sizeLabel))") { Task { await model.voice.download() } }
+            case .downloading(let f):
+                HStack { Text("Downloading voice"); Spacer(); Text("\(Int(f * 100))%").monospacedDigit().foregroundStyle(.secondary) }
+            case .preparing:
+                HStack { Text("Getting voice ready"); Spacer(); ProgressView() }
+            case .failed(let m):
+                Text(m).font(.footnote).foregroundStyle(.orange)
+                Button("Try again") { model.voice.clearError(); Task { if model.voice.isDownloaded { await model.voice.prepare() } else { await model.voice.download() } } }
+            default:
+                LabeledContent("Voice", value: "Ready (\(VoiceInput.sizeLabel) on this phone)")
+                Button("Remove voice download", role: .destructive) { model.voice.deleteModel() }
+            }
+        } header: {
+            Text("Ask")
+        } footer: {
+            Text("Hold the mic in Ask and talk; let go to send. Speech is turned into text on the phone with WhisperKit (OpenAI's Whisper model), so your voice never leaves it. Sounds stay quiet when the phone is on silent.")
         }
     }
 

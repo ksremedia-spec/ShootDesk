@@ -136,6 +136,35 @@ download done at 79; footer "Updated 3 seconds ago" with the full download still
 overnight case, opening after 12+ hours, still to be seen). Not seen: the brief
 "Updating…" line (over too fast to screenshot). Not checked on the phone yet beyond installing it.
 
+## Oct 20: the new Ask (asked for by Kyle; checked in the simulator, voice not tried with speech)
+
+Kyle picked (Oct 20): polished chat look; tappable shoots and agents; knows more of his day; charts; faster and
+remembers; press-and-hold to talk with WhisperKit; sounds; haptics; smooth streaming; follow-up chips.
+- Look (`Views/AskView.swift`, `Views/AskAnswer.swift`): question bubble, Claude's reply in a panel with a sparkle
+  that pulses while it writes, lists, copy and share, 2-3 follow-up chips under the last answer.
+- Cards and charts: the prompt (`Core/Assistant.swift`, `AskContext.system`) asks Claude for `[[shoot 1855]]`,
+  `[[agent Full Name]]`, one ```chart {json}``` block and a `[[next: a | b | c]]` line; `AnswerParser` turns them into
+  a tappable shoot card, an agent card with call and text buttons, a Swift Charts bar or line chart, and the chips.
+- More of the day (`App/AskToday.swift`): each question carries the week's bookings with leave-by times, open times
+  (same maths as Open times), the upcoming check and missing deliverables.
+- Faster: the big data block no longer has the clock in it and is marked for prompt caching (5 minutes); the whole
+  conversation is cached too. Effort `medium`, plus `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`)
+  so a safety-check decline is retried on another model. Verified in the simulator: first question wrote 61,993
+  tokens to the cache, the next two read 61,209 from it (the app logs `ShootDesk Claude usage:` lines).
+- Remembers: the current conversation is saved to `Application Support/ShootDesk/ask.json` (last 40 turns);
+  "New question" clears it.
+- Voice (`App/Voice.swift`): hold the mic, talk, let go to send, slide up to cancel; words appear while you hold.
+  WhisperKit 1.1.1 (`project.yml` packages), model `openai_whisper-large-v3-v20240930_626MB`, downloaded once on
+  first use (606 MB on disk, kept out of iCloud backups); agents' names and towns are passed as a hint. Settings >
+  Ask can remove it. Checked in the simulator: the download prompt, the download (about 20 s on the Mac's
+  connection), loading, and iOS's microphone question with our wording. NOT checked: talking to it (needs a person;
+  the simulator's mic prompt was left for Kyle), and how long the first load takes on the phone.
+- Sounds (`App/AskSounds.swift`): send, answer ready, mic on and off, made in code as soft tones, played as system
+  sounds (quiet on silent), Settings > Ask turns them off. Haptics on send, mic, and answer done.
+- Seen in the simulator: answers to "When am I free this week?" (open days and gaps matched Open times, three shoot
+  cards), a Stripe question, and a follow-up chip (tapped by the simulator's swipe, not on purpose); open and
+  folded. Installed on Kyle's iPhone Oct 20. Not seen: a chart (no question asked yet that called for one), an agent card's call/text on a phone.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.

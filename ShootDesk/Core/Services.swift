@@ -138,6 +138,8 @@ public struct ClaudeBlock: Encodable {
     public let type: String
     public let text: String?
     public let source: ImageSource?
+    /// Marks the end of a block Claude should keep loaded between requests (prompt caching, 5 minutes).
+    public var cached = false
 
     public struct ImageSource: Encodable {
         public let type: String
@@ -145,16 +147,19 @@ public struct ClaudeBlock: Encodable {
     }
 
     public static func text(_ s: String) -> ClaudeBlock { ClaudeBlock(type: "text", text: s, source: nil) }
+    /// Text that stays the same across follow-up questions, so Claude can reuse it instead of re-reading it.
+    public static func cachedText(_ s: String) -> ClaudeBlock { ClaudeBlock(type: "text", text: s, source: nil, cached: true) }
     public static func image(url: String) -> ClaudeBlock {
         ClaudeBlock(type: "image", text: nil, source: ImageSource(type: "url", url: url))
     }
 
-    enum CodingKeys: String, CodingKey { case type, text, source }
+    enum CodingKeys: String, CodingKey { case type, text, source, cache_control }
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(type, forKey: .type)
         try c.encodeIfPresent(text, forKey: .text)
         try c.encodeIfPresent(source, forKey: .source)
+        if cached { try c.encode(["type": "ephemeral"], forKey: .cache_control) }
     }
 }
 
@@ -184,6 +189,21 @@ public final class ClaudeClient {
         let system: String?
         let messages: [ClaudeMessage]
         var stream: Bool? = nil
+        /// Caches the conversation so far, so a follow-up only pays full price for what's new.
+        var cache_control: [String: String]? = nil
+        var output_config: [String: String]? = nil
+        /// "default": if Claude's safety checks decline a question, Anthropic retries it on a fallback model.
+        var fallbacks: String? = nil
+    }
+
+    /// Options for a chat-style request (Ask): cache the conversation, pick the effort, allow a fallback model.
+    public struct ChatOptions {
+        public var cacheConversation = false
+        public var effort: String? = nil
+        public var fallback = false
+        public init(cacheConversation: Bool = false, effort: String? = nil, fallback: Bool = false) {
+            self.cacheConversation = cacheConversation; self.effort = effort; self.fallback = fallback
+        }
     }
 
     /// Long answers stream in, so there's no overall time limit; it only gives up after 2 minutes of silence.
@@ -200,15 +220,19 @@ public final class ClaudeClient {
     }
 
     public func send(model: String = ClaudeClient.smart, system: String?, messages: [ClaudeMessage],
-                     maxTokens: Int = ClaudeClient.maxOutput,
+                     maxTokens: Int = ClaudeClient.maxOutput, options: ChatOptions = ChatOptions(),
                      onText: (@Sendable (String) -> Void)? = nil) async throws -> String {
         var r = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
         r.httpMethod = "POST"
         r.setValue(key, forHTTPHeaderField: "x-api-key")
         r.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         r.setValue("application/json", forHTTPHeaderField: "content-type")
-        r.httpBody = try JSONEncoder().encode(Body(model: model, max_tokens: maxTokens, system: system,
-                                                   messages: messages, stream: true))
+        if options.fallback { r.setValue("server-side-fallback-2026-07-01", forHTTPHeaderField: "anthropic-beta") }
+        var body = Body(model: model, max_tokens: maxTokens, system: system, messages: messages, stream: true)
+        if options.cacheConversation { body.cache_control = ["type": "ephemeral"] }
+        if let e = options.effort { body.output_config = ["effort": e] }
+        if options.fallback { body.fallbacks = "default" }
+        r.httpBody = try JSONEncoder().encode(body)
         let (bytes, resp) = try await Self.streamSession.bytes(for: r)
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(code) else {
@@ -224,6 +248,19 @@ public final class ClaudeClient {
             guard let d = json.data(using: .utf8),
                   let obj = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { continue }
             switch obj["type"] as? String {
+            case "message_start":
+                // How much Claude reused from the cache (numbers only; checked when tuning Ask).
+                if let u = (obj["message"] as? [String: Any])?["usage"] as? [String: Any] {
+                    NSLog("ShootDesk Claude usage: input %d, cache read %d, cache write %d",
+                          u["input_tokens"] as? Int ?? 0, u["cache_read_input_tokens"] as? Int ?? 0,
+                          u["cache_creation_input_tokens"] as? Int ?? 0)
+                }
+            case "content_block_start":
+                // A fallback model took over mid-answer: its answer replaces the partial one.
+                if (obj["content_block"] as? [String: Any])?["type"] as? String == "fallback" {
+                    text = ""
+                    onText?(text)
+                }
             case "content_block_delta":
                 if let delta = obj["delta"] as? [String: Any], delta["type"] as? String == "text_delta",
                    let t = delta["text"] as? String {
@@ -239,6 +276,7 @@ public final class ClaudeClient {
                 break
             }
         }
+        if stop == "refusal" { throw FieldError.badResponse("Claude couldn't answer that one. Try asking it another way.") }
         if text.isEmpty { throw FieldError.badResponse("Claude returned no text (\(stop ?? "unknown"))") }
         return text
     }
