@@ -105,6 +105,16 @@ Found in the pass, all five FIXED the same evening at Kyle's request (checked in
   no longer half under it; some bubbles touch at the edges. Not rechecked open after the speed fix (Device Hub's
   replacement window had no pose buttons); the speed fix doesn't change where bubbles go.
 
+Oct 20, found by Kyle on a regular iPhone (his screenshots: bottom tab bar with "More", real signal and battery),
+FIXED: in Listings "Past shoots", a row with a blue date card (a shoot with no photos) came out wider and taller
+than the other rows, the date card nearly touching the screen edges. Cause: `ShootCard` put `.aspectRatio(16/10,
+contentMode: .fill)` on the artwork itself, and `DateArt` stretches to whatever it's offered, so it spilled past its
+column and the photo beside it stretched to match. Fix (`Views/Components.swift`): a fixed 16:10 box the column's
+width with the photo or date art laid over it, and the time label as a second overlay. Checked in the simulator,
+folded: the Oct 2 row (298 Potomska Rd, 270 Tinkham St) lines up with the rows above; the Upcoming and This week
+rows (date cards with the time label) look the same as before. Not checked: the open Duo (Device Hub's window came
+back without pose buttons), and on Kyle's iPhone (needs the new build installed there).
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.

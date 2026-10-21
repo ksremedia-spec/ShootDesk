@@ -360,22 +360,26 @@ struct ShootCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            ZStack(alignment: .topTrailing) {
-                Group {
+            // A fixed 16:10 box the column's width, with the artwork filling it. (Putting the aspect ratio
+            // on the artwork itself let the date art, which stretches to any size offered, spill past its
+            // column and make the whole grid row taller and wider than the others.)
+            Color.clear
+                .aspectRatio(16 / 10, contentMode: .fit)
+                .frame(maxWidth: .infinity)
+                .overlay {
                     if let url = job.heroURL { RemotePhoto(url: url, cornerRadius: 0) }
                     else { DateArt(date: job.start) }
                 }
-                .aspectRatio(16 / 10, contentMode: .fill)
-                if showsTime, let s = job.start {
-                    Text(FieldTime.clockAMPM(s))
-                        .font(.caption.weight(.semibold)).monospacedDigit()
-                        .padding(.horizontal, 8).padding(.vertical, 4)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .padding(8)
+                .overlay(alignment: .topTrailing) {
+                    if showsTime, let s = job.start {
+                        Text(FieldTime.clockAMPM(s))
+                            .font(.caption.weight(.semibold)).monospacedDigit()
+                            .padding(.horizontal, 8).padding(.vertical, 4)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .padding(8)
+                    }
                 }
-            }
-            .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(job.street).font(.address(.headline)).lineLimit(1)
