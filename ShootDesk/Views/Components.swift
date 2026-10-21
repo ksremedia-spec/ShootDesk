@@ -20,6 +20,42 @@ extension Font {
 /// Side margin: a little more room when the Duo is open.
 struct Gutter {
     static func of(_ size: UserInterfaceSizeClass?) -> CGFloat { size == .regular ? 28 : 18 }
+    /// Room for a side column next to the main content (Ask's question list, Settings' second column).
+    /// The open Duo held wide is about 950 points; held tall it's about 670, which is too narrow for one.
+    static let sideColumnWidth: CGFloat = 820
+}
+
+/// The search field at the top of Listings and Customers. It sits on the same side margin as the page
+/// under it (the system search bar uses its own margins, which didn't line up on the Duo).
+struct SearchBox: View {
+    @Environment(\.horizontalSizeClass) private var size
+    @Binding var text: String
+    let prompt: String
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField(prompt, text: $text)
+                .focused($focused)
+                .submitLabel(.search)
+                .autocorrectionDisabled()
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 40)
+        .background(Color(.tertiarySystemFill), in: Capsule())
+        .padding(.horizontal, Gutter.of(size))
+        .padding(.top, 6)
+        .padding(.bottom, 4)
+        .background(Color(.systemBackground))
+    }
 }
 
 /// Cards and tiles shrink a touch while pressed, so taps feel physical.

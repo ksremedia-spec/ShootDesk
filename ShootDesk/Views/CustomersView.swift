@@ -33,20 +33,23 @@ struct CustomersView: View {
                     CustomersTable(rows: agents.map(AgentRow.init).sorted(using: sort), sort: $sort) { id in
                         path.append(.customer(id))
                     }
-                    .padding(.horizontal, 12)
+                    // The table rows have their own small inset, so this lands the names on the page margin.
+                    .padding(.horizontal, Gutter.of(size) - 10)
                 } else {
                     List(agents) { c in
                         NavigationLink(value: AppRoute.customer(c.id)) { CustomerRow(stats: c) }
                             .listRowBackground(Color.clear)
-                            .listRowInsets(EdgeInsets(top: 8, leading: 18, bottom: 8, trailing: 14))
+                            .listRowInsets(EdgeInsets(top: 8, leading: Gutter.of(size), bottom: 8, trailing: Gutter.of(size)))
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
                 }
             }
             .background(Color(.systemBackground))
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if model.hasAryeoKey { SearchBox(text: $search, prompt: "Name, phone or email") }
+            }
             .slimBar("Customers")
-            .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Name, phone or email")
             .refreshable { await model.refresh() }
             .appDestinations(ns)
         }

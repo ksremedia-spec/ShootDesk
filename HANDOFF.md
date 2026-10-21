@@ -165,6 +165,27 @@ remembers; press-and-hold to talk with WhisperKit; sounds; haptics; smooth strea
   cards), a Stripe question, and a follow-up chip (tapped by the simulator's swipe, not on purpose); open and
   folded. Installed on Kyle's iPhone Oct 20. Not seen: a chart (no question asked yet that called for one), an agent card's call/text on a phone.
 
+## Oct 20 design audit (Kyle: "spacing on top and sides" still off on the Duo)
+
+Code read screen by screen (a read-only audit agent) plus screenshots of every tab, the open Duo held tall
+(about 670 pt wide, tab bar along the bottom) and held wide (about 950 pt). Fixed:
+- Ask and Settings chose their side-by-side layout from the size class only, so on the open Duo held tall the
+  360 pt question list squeezed the chat to a strip and Settings' right column was cramped with a 64 pt gap. Now they
+  switch on real width (`Gutter.sideColumnWidth` = 820): two columns only when held wide.
+- Search bars: Listings and Customers used the system search bar, whose margins don't follow ours. New `SearchBox`
+  (`Views/Components.swift`) sits on the page gutter.
+- Gutters: Customers table 12 -> `Gutter.of(size) - 10` (the table's own row inset makes up the rest), folded
+  Customers rows, Ask chat (22/16) and composer (12), Settings forms, Money (hard-coded 28/18), the Open times offer
+  bar, the folded map town card: all on `Gutter.of(size)` now.
+- Top spacing under the title bar: Schedule 12 and Listings 14 -> 16, like the other pages.
+- Open Duo stretch: Listing kit is a centred column of at most 720 pt; Open times' intro and length picker are capped.
+Checked in the simulator: open Duo tall (Listings, Customers, Ask, Settings, Money) and wide (Listings, Customers,
+Ask, Settings). Not rechecked: folded and half-open after the change (the simulator's folded pose was stuck sideways),
+Listing kit and Open times after the change. Left alone: the system's own title text sits about 8 pt left of the
+gutter on the wide open Duo (iOS places it); the photo viewer's thumbnail strip (full screen, no tab bar there);
+section spacing still varies 18-30 between screens (raise if Kyle wants it uniform). Also noticed, not a layout
+issue: the Upcoming check says "Nothing coming up" until its first check has run after launch.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.

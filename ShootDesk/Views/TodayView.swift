@@ -323,7 +323,7 @@ struct ScheduleView: View {
                     sunsetLabel.padding(.horizontal, Gutter.of(size))
                 }
             }
-            .padding(.vertical, 12)
+            .padding(.vertical, 16)
         }
         .background(Color(.systemBackground))
         .refreshable { await model.refresh() }
@@ -534,6 +534,7 @@ struct AvailabilityView: View {
                     Text("When you're free").font(.address(size == .regular ? 32 : 28))
                     Text("8 AM to sunset, with 30 minutes kept clear around each shoot for the drive. Tap openings to offer them.")
                         .font(.subheadline).foregroundStyle(.secondary)
+                        .frame(maxWidth: 560, alignment: .leading)
                 }
                 Picker("Shoot length", selection: $minutes) {
                     Text("1 hr").tag(60)
@@ -542,6 +543,7 @@ struct AvailabilityView: View {
                     Text("3 hr").tag(180)
                 }
                 .pickerStyle(.segmented)
+                .frame(maxWidth: 440)
                 .onChange(of: minutes) { _, m in
                     picked = picked.filter { $0.duration >= TimeInterval(m * 60) }
                 }
@@ -661,7 +663,7 @@ struct AvailabilityView: View {
         .padding(16)
         .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: .black.opacity(0.15), radius: 14, y: 2)
-        .padding(.horizontal, size == .regular ? 28 : 12)
+        .padding(.horizontal, Gutter.of(size))
         .padding(.bottom, 8)
         .frame(maxWidth: size == .regular ? 760 : .infinity)
     }

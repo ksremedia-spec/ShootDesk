@@ -20,20 +20,21 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if size == .regular {
-                    // Open Duo: two columns, so nothing is lost to empty margins.
+            // Open Duo held wide: two columns, so nothing is lost to empty margins. Held tall or folded: one.
+            // Margins match the page gutter; the tab bar's strip is already outside the safe area.
+            GeometryReader { geo in
+                if geo.size.width >= Gutter.sideColumnWidth {
                     HStack(alignment: .top, spacing: 0) {
                         Form { appearanceSection; connectionsSection; moneyErrorSection }
-                            .contentMargins(.leading, 28, for: .scrollContent)
-                            .contentMargins(.trailing, 14, for: .scrollContent)
+                            .contentMargins(.leading, Gutter.of(size), for: .scrollContent)
+                            .contentMargins(.trailing, 10, for: .scrollContent)
                         Form { alertsSection; dataSection; claudeSection; askSection; aboutSection }
-                            .contentMargins(.leading, 14, for: .scrollContent)
-                            // Clear of the floating tab bar on the right edge.
-                            .contentMargins(.trailing, 64, for: .scrollContent)
+                            .contentMargins(.leading, 10, for: .scrollContent)
+                            .contentMargins(.trailing, Gutter.of(size), for: .scrollContent)
                     }
                 } else {
                     Form { appearanceSection; connectionsSection; moneyErrorSection; alertsSection; dataSection; claudeSection; askSection; aboutSection }
+                        .contentMargins(.horizontal, Gutter.of(size), for: .scrollContent)
                 }
             }
             .scrollContentBackground(.hidden)

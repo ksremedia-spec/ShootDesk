@@ -17,7 +17,7 @@ struct ListingKitView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 18) {
                     factsCard
                     if let kit = kit {
                         Picker("Draft", selection: $tab) {
@@ -63,8 +63,11 @@ struct ListingKitView: View {
                         Text("Add your Claude key in Settings to write drafts.").font(.footnote).foregroundStyle(.secondary)
                     }
                 }
+                // Open Duo: a readable column in the middle instead of text stretched edge to edge.
+                .frame(maxWidth: size == .regular ? 720 : .infinity)
                 .padding(.vertical, 16)
                 .padding(.horizontal, Gutter.of(size))
+                .frame(maxWidth: .infinity)
             }
             .background(Color(.systemBackground))
             .slimBar("Listing kit")

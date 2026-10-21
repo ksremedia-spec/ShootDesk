@@ -40,15 +40,17 @@ struct AskView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            Group {
-                if size == .regular {
+            // Open Duo held wide: ideas and this conversation in a column on the left. Held tall (or folded)
+            // there isn't room for it, so the ideas sit above the chat instead.
+            GeometryReader { geo in
+                if geo.size.width >= Gutter.sideColumnWidth {
                     HStack(spacing: 0) {
-                        askSidebar.frame(width: 360)
+                        askSidebar.frame(width: 340)
                         Divider()
-                        chat
+                        chat(sidebar: true)
                     }
                 } else {
-                    chat
+                    chat(sidebar: false)
                 }
             }
             .sensoryFeedback(.success, trigger: thinking) { was, now in was && !now }
@@ -101,12 +103,12 @@ struct AskView: View {
         .background(Color(.systemGroupedBackground))
     }
 
-    private var chat: some View {
+    private func chat(sidebar: Bool) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     if turns.isEmpty {
-                        intro
+                        intro(sidebar: sidebar)
                         // Open Duo: the right half shows your business at a glance until you ask something.
                         if size == .regular {
                             BusinessSnapshot(money: model.money, stripeConnected: !model.stripeKey.isEmpty, moneyError: model.moneyError,
@@ -128,7 +130,7 @@ struct AskView: View {
                     }
                     Color.clear.frame(height: 1).id("bottom")
                 }
-                .padding(.horizontal, size == .regular ? 22 : 16)
+                .padding(.horizontal, Gutter.of(size))
                 .padding(.vertical, 16)
             }
             .scrollDismissesKeyboard(.interactively)
@@ -143,7 +145,7 @@ struct AskView: View {
         .safeAreaInset(edge: .bottom) { inputArea }
     }
 
-    private var intro: some View {
+    private func intro(sidebar: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 Image(systemName: "sparkles").font(.title2).foregroundStyle(Theme.accent)
@@ -154,8 +156,8 @@ struct AskView: View {
             if model.claude == nil {
                 Text("Add your Claude key in Settings to use Ask.").font(.footnote).foregroundStyle(.orange)
             }
-            // On the open Duo the ideas sit in the left column instead.
-            if size != .regular {
+            // With the side column showing, the ideas are over there instead.
+            if !sidebar {
                 VStack(spacing: 8) {
                     ForEach(suggestions, id: \.self) { s in
                         Button { ask(s) } label: {
@@ -228,7 +230,7 @@ struct AskView: View {
             .background(.regularMaterial, in: Capsule())
             .overlay(Capsule().stroke(listening ? Theme.accent.opacity(0.6) : .clear, lineWidth: 1.5))
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, Gutter.of(size) - 6)
         .padding(.bottom, 6)
         .animation(.snappy, value: voice.phase)
         .animation(.snappy, value: voiceNote)

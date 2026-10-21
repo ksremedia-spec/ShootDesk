@@ -226,7 +226,7 @@ struct MoneyView: View {
                 Text("From Stripe, checked \(FieldTime.clockAMPM(m.checkedAt)). Pull down to refresh.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            .padding(.horizontal, wide ? 28 : 18)
+            .padding(.horizontal, Gutter.of(size))
             .padding(.vertical, 16)
         }
     }

@@ -58,6 +58,10 @@ struct ListingsView: View {
             .slimBar("Listings")
             // Gallery or map, like Photos' Years / Months / All: a plain switch above the content.
             .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(spacing: 0) {
+                if model.hasAryeoKey {
+                    SearchBox(text: $search, prompt: "Address, agent, package or order #")
+                }
                 if model.hasAryeoKey && !searching {
                     Picker("View", selection: $showMap) {
                         Label("Gallery", systemImage: "square.grid.2x2").tag(false)
@@ -70,8 +74,8 @@ struct ListingsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(.systemBackground))
                 }
+                }
             }
-            .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Address, agent, package or order #")
             .appDestinations(ns)
         }
     }
@@ -122,7 +126,7 @@ struct ListingsView: View {
                     .padding(.horizontal, gutter)
                 }
             }
-            .padding(.vertical, 14)
+            .padding(.vertical, 16)
         }
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.immediately)
@@ -356,7 +360,7 @@ struct ShootsMapView: View {
         .overlay(alignment: .bottom) {
             if let name = selectedTown, let t = towns.first(where: { $0.id == name }) {
                 townCard(t)
-                    .padding(.horizontal, size == .regular ? 0 : 10)
+                    .padding(.horizontal, size == .regular ? 0 : Gutter.of(size))
                     .padding(.bottom, 10)
                     .frame(maxWidth: size == .regular ? 760 : .infinity)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
