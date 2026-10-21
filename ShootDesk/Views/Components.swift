@@ -125,6 +125,8 @@ struct SideSafeScroller<Content: View>: View {
     @State private var clearWidth: CGFloat?
 
     private struct Reading: Equatable { var width: CGFloat; var inset: CGFloat }
+    /// How far before the pill the cards start to fade out.
+    private static var fade: CGFloat { 36 }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -138,8 +140,19 @@ struct SideSafeScroller<Content: View>: View {
                     clearWidth = r.inset > 0.5 ? r.width : nil
                 }
             scroller
-                // The scroller's frame runs on under the pill; this masks off everything past the ruler's width.
-                .mask(alignment: .leading) { Rectangle().frame(width: clearWidth) }
+                // The scroller's frame runs on under the pill; this masks off everything past the ruler's width,
+                // fading the last stretch so cards melt away toward the pill instead of ending on a hard line.
+                .mask(alignment: .leading) {
+                    if let w = clearWidth, w > Self.fade * 2 {
+                        LinearGradient(stops: [.init(color: .black, location: 0),
+                                               .init(color: .black, location: (w - Self.fade) / w),
+                                               .init(color: .clear, location: 1)],
+                                       startPoint: .leading, endPoint: .trailing)
+                            .frame(width: w)
+                    } else {
+                        Rectangle()
+                    }
+                }
         }
     }
 

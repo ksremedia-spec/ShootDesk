@@ -235,6 +235,13 @@ Oct 21, Kyle: an order with no appointment time isn't a confirmed shoot, so List
 shoots with a time (was: those plus "date to be set" orders at the end). Simulator: Upcoming 11 -> 4. Those orders
 still show in search and on the agent's page; Today already required a time.
 
+Oct 21, Kyle: sideways rows (Upcoming, This week, Recently delivered, every `Rail`/`SideSafeScroller`) now fade out
+over the last 36 pt before the tab-bar pill instead of ending on a hard line; with no pill (open Duo held tall, tab
+bar at the bottom) the edge stays as it was. Checked in the simulator, folded. Kyle asked whether it clashes with the
+Duo's own fold/unfold animation (the moving half turns see-through): assumed not. Reports describe that animation as
+drawn by iOS over whatever the app shows, with no app API, and the fade is ordinary app content that follows the
+measured width. Not seen on a real Duo.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.
