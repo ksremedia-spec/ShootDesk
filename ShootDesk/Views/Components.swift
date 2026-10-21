@@ -642,6 +642,27 @@ enum Launcher {
     }
 }
 
+/// Claude's spark (the official mark, from claude.ai), shown on anything Claude writes: Ask and the Listing kit.
+struct ClaudeMark: View {
+    var size: CGFloat = 18
+    /// Draw it in one colour (white on a blue button) instead of Claude's orange.
+    var tint: Color? = nil
+    var body: some View {
+        Image("ClaudeSpark")
+            .resizable()
+            .renderingMode(tint == nil ? .original : .template)
+            .foregroundStyle(tint ?? .primary)
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityLabel("Claude")
+    }
+}
+
+/// Claude's colour, for the few touches that go with its mark.
+extension Color {
+    static let claude = Color(red: 0xD9 / 255, green: 0x77 / 255, blue: 0x57 / 255)
+}
+
 /// Stripe's wordmark, shown next to anything that comes from Stripe.
 struct StripeMark: View {
     var height: CGFloat = 14

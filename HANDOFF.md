@@ -189,11 +189,12 @@ issue: the Upcoming check says "Nothing coming up" until its first check has run
 Oct 20, Kyle: the shoot page's photo now fades into the page at the left and right edges too (4% of the width
 folded, 7% open), like it already did at the bottom, so it has no hard edge against the strip by the tab bar
 (`heroArt` in `StopDetailView`). Checked in the simulator, open Duo held wide.
-Claude logo on Ask: Kyle asked for the official logo (and maybe in the app icon). Not done: Anthropic's trademark
-guidelines (anthropic.com/legal/trademark-guidelines, read Oct 20) allow its marks only with Anthropic's prior
-approval, never altered, and not in a way that implies endorsement; they publish no logo files (images on request,
-marketing@anthropic.com). Options put to Kyle: ask Anthropic, or use plain text ("Answers by Claude") with the app's
-own sparkle.
+Claude logo: Kyle decided (Oct 20) to use the official Claude spark in his personal app; he was told Anthropic's
+trademark guidelines ask for approval and that the repo is public. File: `favicon.svg` from claude.ai (2,558 bytes,
+the spark in #D97757), stored as `Resources/Assets.xcassets/ClaudeSpark.imageset/claude.svg`; `ClaudeMark` in
+`Views/Components.swift` draws it. Used: Ask's title bar ("Claude" label), Ask's intro, beside each answer (it turns
+gently while Claude writes), and the Listing kit button ("Write it with Claude", white). App icon with a small spark:
+two previews made (`icon-preview.png` in the project folder, not committed), waiting on Kyle's pick.
 
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the

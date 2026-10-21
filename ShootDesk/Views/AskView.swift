@@ -58,6 +58,14 @@ struct AskView: View {
             .sensoryFeedback(.impact(weight: .medium), trigger: micTick)
             .slimBar("Ask")
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 5) {
+                        ClaudeMark(size: 15)
+                        Text("Claude").font(.subheadline.weight(.semibold))
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Answers by Claude")
+                }
                 if !turns.isEmpty {
                     ToolbarItem(placement: .primaryAction) {
                         Button { newConversation() } label: { Label("New question", systemImage: "square.and.pencil") }
@@ -148,7 +156,7 @@ struct AskView: View {
     private func intro(sidebar: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                Image(systemName: "sparkles").font(.title2).foregroundStyle(Theme.accent)
+                ClaudeMark(size: 26)
                 Text("Ask about your business").font(.address(22))
             }
             Text(model.money == nil ? "Answered from live Aryeo data. Hold the mic to talk." : "Answered from live Aryeo and Stripe data. Hold the mic to talk.")
@@ -398,6 +406,20 @@ enum AskHistory {
     }
 }
 
+/// Claude's spark turns and breathes gently while it's writing.
+struct Breathing: ViewModifier {
+    let active: Bool
+    @State private var on = false
+    func body(content: Content) -> some View {
+        content
+            .rotationEffect(.degrees(on ? 22 : 0))
+            .scaleEffect(on ? 1.12 : 1)
+            .animation(active ? .easeInOut(duration: 0.9).repeatForever(autoreverses: true) : .easeOut(duration: 0.3), value: on)
+            .onAppear { on = active }
+            .onChange(of: active) { _, a in on = a }
+    }
+}
+
 /// Shown in place of the text field while you hold the mic: a live level meter and the words so far.
 struct ListeningBar: View {
     let level: Float
@@ -445,10 +467,9 @@ struct TurnView: View {
                     .background(Theme.accent, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "sparkles")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(turn.failed ? Color.orange : Theme.accent)
-                    .symbolEffect(.pulse, isActive: streaming)
+                ClaudeMark(size: 20)
+                    .opacity(turn.failed ? 0.45 : 1)
+                    .modifier(Breathing(active: streaming))
                     .frame(width: 22)
                     .padding(.top, 14)
                 VStack(alignment: .leading, spacing: 12) {

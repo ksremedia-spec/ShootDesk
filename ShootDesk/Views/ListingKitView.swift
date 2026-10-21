@@ -48,9 +48,10 @@ struct ListingKitView: View {
                     Button {
                         Task { await write() }
                     } label: {
-                        HStack {
+                        HStack(spacing: 8) {
                             if working { ProgressView().tint(.white) }
-                            Text(working ? "Writing from your photos…" : (kit == nil ? "Write it" : "Rewrite it"))
+                            else { ClaudeMark(size: 18, tint: .white) }
+                            Text(working ? "Writing from your photos…" : (kit == nil ? "Write it with Claude" : "Rewrite it"))
                         }
                         .font(.headline)
                         .frame(maxWidth: .infinity, minHeight: 50)
