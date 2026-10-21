@@ -168,9 +168,12 @@ final class LiveSession {
         let recognizer = await Self.recognizer()
         try await Self.ensureModel { _ in }
 
-        let audio = AVAudioSession.sharedInstance()
-        try audio.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
-        try audio.setActive(true, options: .notifyOthersOnDeactivation)
+        // Switching the audio on can take a moment; do it off the main thread so the listening panel opens smoothly.
+        try await Task.detached(priority: .userInitiated) {
+            let audio = AVAudioSession.sharedInstance()
+            try audio.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+            try audio.setActive(true, options: .notifyOthersOnDeactivation)
+        }.value
 
         let inputNode = engine.inputNode
         // The microphone's own format. Some setups (the simulator among them) report an empty one until asked

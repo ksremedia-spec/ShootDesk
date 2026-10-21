@@ -323,8 +323,13 @@ on-device engine and tap-to-talk (he dislikes holding), auto-send after 2 s of q
   title bar doesn't cover its top; ignores touches; corner radius 54.
 - The moving bars felt "cheesy": replaced by `VoiceWave`, three thin flowing lines (app blue) that taper at both
   ends, calm when quiet and taller as you talk. Both stop moving with Reduce Motion on.
+- Kyle: opening was "janky" and the panel too wide. Fixes: the mic keeps its place (faded out) and the panel opens
+  over it growing upward, so the chat above no longer jumps; a softer spring; the audio session switches on off the
+  main thread (`LiveSession.start`) so it can't stall the animation; the panel sits 12 pt further in from each side
+  folded (26 pt in all) and is capped at 520 pt wide on the open Duo (was 560, edge to edge folded).
 - Installed on Kyle's iPhone 16 Pro Max Oct 21, not yet seen there. Simulator can't run the speech engine; the
-  glow was seen folded (with a temporary fake-listening switch, since removed); the wave and the open Duo were not.
+  glow was seen folded (with a temporary fake-listening switch, since removed); the wave, the smoother opening and
+  the open Duo were not.
 
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the

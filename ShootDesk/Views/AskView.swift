@@ -14,6 +14,7 @@ struct AskView: View {
     @State private var askTask: Task<Void, Never>?
     @State private var sendTick = 0
     @State private var micTick = 0
+    @State private var panelWidth: CGFloat = 360
     @FocusState private var focused: Bool
 
     struct Turn: Identifiable, Codable, Equatable {
@@ -220,16 +221,26 @@ struct AskView: View {
                     .background(.regularMaterial, in: Capsule())
                     .transition(.opacity)
             }
-            if listening {
-                ListeningPanel(voice: voice, level: voiceLevel,
-                               cancel: { voice.cancel(); AskSounds.play(.micOff); micTick += 1 },
-                               send: { Task { let q = await voice.finish(); AskSounds.play(.micOff); if !q.isEmpty { ask(q) } } })
-                    .frame(maxWidth: 560)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-            } else {
-                micButton
-                    .transition(.opacity)
-            }
+            // The mic keeps its place while listening, so the conversation above doesn't jump; the panel opens over
+            // it and grows upward.
+            micButton
+                .opacity(listening ? 0 : 1)
+                .scaleEffect(listening ? 0.85 : 1)
+                .allowsHitTesting(!listening)
+                .overlay(alignment: .bottom) {
+                    if listening {
+                        ListeningPanel(voice: voice, level: voiceLevel,
+                                       cancel: { voice.cancel(); AskSounds.play(.micOff); micTick += 1 },
+                                       send: { Task { let q = await voice.finish(); AskSounds.play(.micOff); if !q.isEmpty { ask(q) } } })
+                            // A little in from the edges on the folded screen (Kyle, Oct 21); capped on the open Duo.
+                            .padding(.horizontal, 12)
+                            .frame(maxWidth: 520)
+                            .frame(width: max(0, panelWidth - 2 * Gutter.of(size)))
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .scale(scale: 0.92, anchor: .bottom)).combined(with: .offset(y: 10)),
+                                removal: .opacity.combined(with: .scale(scale: 0.96, anchor: .bottom))))
+                    }
+                }
         }
         .padding(.horizontal, Gutter.of(size))
         .padding(.top, 28)
@@ -244,7 +255,9 @@ struct AskView: View {
                 .ignoresSafeArea(edges: .bottom)
                 .allowsHitTesting(false)
         }
-        .animation(.snappy, value: voice.phase)
+        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: voice.phase)
+        .animation(.spring(response: 0.35, dampingFraction: 0.9), value: voice.text.isEmpty)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { panelWidth = $0 }
     }
 
     /// Loudness right now, 0...1 (the last few readings averaged so the glow doesn't flicker).
