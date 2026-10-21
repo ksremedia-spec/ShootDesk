@@ -160,7 +160,7 @@ struct PhotosCard: View {
             }
 
             HStack(spacing: 10) {
-                Button { Task { await saver.save(images) } } label: {
+                Button { Task { await saver.save(images, title: job.street, transfers: model.transfers) } } label: {
                     Label(saver.state.label(total: images.count), systemImage: saver.state.icon)
                 }
                 .buttonStyle(PrimaryActionStyle(prominent: false))
@@ -359,7 +359,8 @@ final class SingleSaver {
         }
     }
 
-    func save(_ item: MediaItem) async {
+    /// Pass `transfers` to show a video's progress in the pill and on the Lock Screen (photos are quick, so they don't).
+    func save(_ item: MediaItem, transfers: TransferCenter? = nil) async {
         guard let url = item.saveURL else { return }
         let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
         guard status == .authorized || status == .limited else {
@@ -370,9 +371,10 @@ final class SingleSaver {
         do {
             if item.isVideo {
                 // Full-quality .mov from Aryeo; can be a few hundred MB.
-                let (downloaded, _) = try await URLSession.shared.download(from: url)
-                let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
-                try FileManager.default.moveItem(at: downloaded, to: file)
+                transfers?.begin(title: item.title, kind: "Video", line: "0%")
+                let file = try await ProgressDownload.file(from: url) { f in
+                    Task { @MainActor in transfers?.progress(f * 0.97, line: "\(Int(f * 100))%") }
+                }
                 try await PHPhotoLibrary.shared().performChanges {
                     let options = PHAssetResourceCreationOptions()
                     options.shouldMoveFile = true
@@ -385,8 +387,10 @@ final class SingleSaver {
                 }
             }
             state = .saved
+            if item.isVideo { transfers?.finish(ok: true, line: "100%") }
         } catch {
             state = .failed("Couldn't save it. Check your connection and try again.")
+            if item.isVideo { transfers?.finish(ok: false, line: "Stopped") }
         }
     }
 }
@@ -421,14 +425,17 @@ final class PhotoSaver {
 
     /// Downloads each full-resolution photo from Aryeo and adds it to the Photos library.
     /// Uses "add only" permission: the app can save photos but never see your library.
-    func save(_ images: [ListingImage]) async {
+    func save(_ images: [ListingImage], title: String, transfers: TransferCenter) async {
         let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
         guard status == .authorized || status == .limited else {
             state = .failed("Allow photo saving in Settings › ShootDesk › Photos.")
             return
         }
         state = .saving(0)
+        let total = images.count
+        transfers.begin(title: title, kind: "\(total) photos", line: "0 of \(total)")
         var saved = 0
+        var tried = 0
         for img in images {
             guard let s = img.originalUrl ?? img.largeUrl, let url = URL(string: s) else { continue }
             do {
@@ -439,10 +446,12 @@ final class PhotoSaver {
                 saved += 1
                 state = .saving(saved)
             } catch {
-                continue
             }
+            tried += 1
+            transfers.progress(Double(tried) / Double(max(total, 1)), line: "\(saved) of \(total)")
         }
         state = saved > 0 ? .saved(saved) : .failed("Couldn't save the photos. Check your connection and try again.")
+        transfers.finish(ok: saved > 0, line: saved == total ? "All \(total)" : "\(saved) of \(total)")
     }
 }
 
@@ -489,6 +498,7 @@ final class ImageCache {
 }
 
 struct GalleryViewer: View {
+    @Environment(AppModel.self) private var model
     let items: [MediaItem]
     @State private var index: Int
     @State private var presenting: Bool
@@ -683,7 +693,7 @@ struct GalleryViewer: View {
             }
             if let item = current {
                 circleButton(saver.state == .saved ? "checkmark" : saver.state == .working ? "ellipsis" : "arrow.down.to.line",
-                             label: "Save to Photos") { Task { await saver.save(item) } }
+                             label: "Save to Photos") { Task { await saver.save(item, transfers: model.transfers) } }
                     .disabled(saver.state == .working || item.saveURL == nil)
             }
         }

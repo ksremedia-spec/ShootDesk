@@ -11,22 +11,28 @@ struct RootView: View {
             TodayView()
                 .tabItem { Label("Today", systemImage: "sun.horizon") }
                 .tag(AppTab.today)
+                .transferPill()
                 .badge(model.needsAttentionCount + model.deliveryFlags.count)
             ListingsView()
                 .tabItem { Label("Listings", systemImage: "photo.stack") }
                 .tag(AppTab.listings)
+                .transferPill()
             CustomersView()
                 .tabItem { Label("Customers", systemImage: "person.2") }
                 .tag(AppTab.customers)
+                .transferPill()
             MoneyView()
                 .tabItem { Label("Money", systemImage: "dollarsign.circle") }
                 .tag(AppTab.money)
+                .transferPill()
             AskView()
                 .tabItem { Label("Ask", systemImage: "sparkles") }
                 .tag(AppTab.ask)
+                .transferPill()
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(AppTab.settings)
+                .transferPill()
         }
         .onAppear {
             if !model.hasAryeoKey { tab = .settings }

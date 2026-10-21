@@ -266,6 +266,17 @@ saved and the app's path changes on reinstall. Now saved relative to `Applicatio
 paths are read by their tail). Checked in the simulator: no download prompt after reinstall. Holding to talk in
 the simulator uses the Mac's microphone, so it may work there; not tried.
 
+Oct 21, Kyle: progress for big saves to Photos ("Save all" photos, and saving a video from the viewer; single photos
+don't). `App/Transfers.swift`: `TransferCenter` (on `AppModel.transfers`) tracks one save, asks iOS for background
+time, and drives a small pill bottom left on every tab (ring + "12 of 34", ticks and hides 4 s after) and a Live
+Activity (`TransferActivityAttributes` in `Core/NextShoot.swift`, `TransferLiveActivityWidget` in the widget): Lock
+Screen card with a bar and "28 of 34", Dynamic Island ring and percent. Videos now download through
+`ProgressDownload` (URLSession task progress). If iOS stops the app in the background the card says "Paused. Open
+ShootDesk to finish." Checked in the simulator: Save all 34 on 129 Huttleston Ave, the pill counted up, and the Lock
+Screen card kept counting after leaving the app (iOS asked "allow Live Activities from ShootDesk?" the first time;
+left for Kyle). Not seen: a video save, the Dynamic Island (the simulated Duo has none on screen), the paused case.
+The simulator's Photos now holds those 34 test copies.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.

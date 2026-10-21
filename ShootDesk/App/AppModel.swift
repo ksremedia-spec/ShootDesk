@@ -44,6 +44,8 @@ final class AppModel {
     let weather = WeatherClient()
     /// Press-and-hold voice for Ask (WhisperKit). Lives here so a download keeps going when you change tabs.
     let voice = VoiceInput()
+    /// Big saves to Photos in progress (the pill and the Lock Screen card).
+    let transfers = TransferCenter()
     let records = PropertyRecordsClient()
     private let store: OrderStore
     @ObservationIgnored private var pollTask: Task<Void, Never>?

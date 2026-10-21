@@ -303,4 +303,28 @@ public struct ShootActivityAttributes: ActivityAttributes {
         self.agent = agent
     }
 }
+
+/// A big save to Photos (a set of photos or a video) on the Lock Screen and in the Dynamic Island.
+public struct TransferActivityAttributes: ActivityAttributes {
+    public struct ContentState: Codable, Hashable {
+        public var fraction: Double
+        /// "12 of 34", "45%"
+        public var line: String
+        public var finished: Bool
+        public var failed: Bool
+        /// iOS stopped the app in the background; it picks up again when the app is opened.
+        public var paused: Bool
+
+        public init(fraction: Double, line: String, finished: Bool, failed: Bool, paused: Bool) {
+            self.fraction = fraction; self.line = line; self.finished = finished; self.failed = failed; self.paused = paused
+        }
+    }
+
+    /// "129 Huttleston Ave"
+    public var title: String
+    /// "34 photos", "Video"
+    public var kind: String
+
+    public init(title: String, kind: String) { self.title = title; self.kind = kind }
+}
 #endif

@@ -13,6 +13,7 @@ struct ShootDeskWidgets: WidgetBundle {
         NextShootWidget()
         EveningCheckWidget()
         ShootLiveActivityWidget()
+        TransferLiveActivityWidget()
     }
 }
 
@@ -245,5 +246,107 @@ private struct LockScreenShoot: View {
         let f = DateFormatter()
         f.dateFormat = "h:mm a"
         return f.string(from: d)
+    }
+}
+
+
+// MARK: - Save progress (Lock Screen and Dynamic Island)
+
+/// A big save to Photos while you're in another app: what's saving, a bar, and "12 of 34".
+struct TransferLiveActivityWidget: Widget {
+    private static let accent = Color(red: 61 / 255, green: 155 / 255, blue: 234 / 255)
+
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: TransferActivityAttributes.self) { context in
+            TransferLockScreen(context: context)
+                .activityBackgroundTint(Color.black.opacity(0.82))
+                .activitySystemActionForegroundColor(.white)
+        } dynamicIsland: { context in
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    TransferRing(state: context.state, size: 30).padding(.leading, 4)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    Text(context.state.line).font(.headline).monospacedDigit().foregroundStyle(Self.accent)
+                }
+                DynamicIslandExpandedRegion(.center) {
+                    Text(context.attributes.title).font(.system(.headline, design: .serif)).lineLimit(1)
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    Text(TransferLockScreen.status(context)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+            } compactLeading: {
+                TransferRing(state: context.state, size: 18)
+            } compactTrailing: {
+                Text(context.state.finished ? (context.state.failed ? "!" : "Done") : "\(Int(context.state.fraction * 100))%")
+                    .font(.caption.weight(.semibold)).monospacedDigit().foregroundStyle(Self.accent)
+            } minimal: {
+                TransferRing(state: context.state, size: 18)
+            }
+        }
+    }
+}
+
+/// A ring that fills as the save goes; a tick when it's done.
+private struct TransferRing: View {
+    let state: TransferActivityAttributes.ContentState
+    var size: CGFloat
+    private static let accent = Color(red: 61 / 255, green: 155 / 255, blue: 234 / 255)
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(Color.white.opacity(0.25), lineWidth: size / 8)
+            if state.finished {
+                Image(systemName: state.failed ? "exclamationmark" : "checkmark")
+                    .font(.system(size: size * 0.45, weight: .bold))
+                    .foregroundStyle(state.failed ? Color.orange : Color.green)
+            } else {
+                Circle().trim(from: 0, to: state.fraction)
+                    .stroke(Self.accent, style: StrokeStyle(lineWidth: size / 8, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+private struct TransferLockScreen: View {
+    let context: ActivityViewContext<TransferActivityAttributes>
+    private static let accent = Color(red: 61 / 255, green: 155 / 255, blue: 234 / 255)
+
+    static func status(_ context: ActivityViewContext<TransferActivityAttributes>) -> String {
+        let s = context.state
+        if s.finished { return s.failed ? "Didn't finish. Open ShootDesk to try again." : "Saved to Photos" }
+        if s.paused { return "Paused. Open ShootDesk to finish." }
+        return "Saving \(context.attributes.kind.lowercased())"
+    }
+
+    var body: some View {
+        let s = context.state
+        HStack(alignment: .center, spacing: 14) {
+            Image(systemName: s.finished ? (s.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill") : "arrow.down.circle.fill")
+                .font(.system(size: 34))
+                .foregroundStyle(s.finished && !s.failed ? Color.green : (s.failed ? Color.orange : Self.accent))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(Self.status(context))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(s.finished && !s.failed ? Color.green : Self.accent)
+                    .lineLimit(1)
+                Text(context.attributes.title)
+                    .font(.system(size: 22, weight: .semibold, design: .serif))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                if !s.finished {
+                    ProgressView(value: s.fraction).tint(Self.accent)
+                }
+            }
+            Spacer(minLength: 4)
+            Text(s.line)
+                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+        }
+        .padding(.vertical, 4)
     }
 }
