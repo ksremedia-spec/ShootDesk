@@ -2,8 +2,8 @@
 
 ShootDesk is Kyle Silva's personal iPhone app (Horizon Home Media, real-estate photography) that replaces
 Aryeo Go, built for the iPhone Duo. Project on the Mac: `~/Documents/ShootDesk-github`, a clone of GitHub made Oct 19.
-(The older `~/Documents/ShootDesk` is NOT a git clone of the repo. Compared Oct 20: an older copy, nothing in it is
-missing here; still ask Kyle before deleting it.) Read `CLAUDE.md` for the rules and the
+(The older `~/Documents/ShootDesk` copy was an out-of-date, non-git version; compared Oct 20 and found nothing missing
+here, and moved to the Trash the same day at Kyle's request. This folder is the only project now.) Read `CLAUDE.md` for the rules and the
 design system; `README.md` says what the app does. This file is the state of play and the to-do list.
 
 Kyle is not a programmer. Plain English. Label everything as verified / assumed / unknown. Change only what
