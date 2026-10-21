@@ -1,257 +1,264 @@
+import AVFoundation
 import Foundation
-import WhisperKit
+import Speech
 
-/// Press and hold to talk in Ask. WhisperKit (Argmax) runs OpenAI's Whisper speech model on the phone:
-/// the recording never leaves it. The model is downloaded once (from Argmax's page on Hugging Face) into
-/// Application Support, kept out of iCloud backups, and loaded the first time Ask needs it.
+/// Tap-to-talk in Ask (Kyle, Oct 21), on Apple's own on-device speech recognition (SpeechAnalyzer, iOS 26+):
+/// words appear as you speak, it sends itself after 2 seconds of quiet, and nothing leaves the phone. iOS manages
+/// the speech model (often already there for keyboard dictation). Replaced WhisperKit, which isn't built for live
+/// speech and was slow on the phone.
 @MainActor @Observable
 final class VoiceInput {
     enum Phase: Equatable {
-        case needsDownload
-        case downloading(Double)     // 0...1
-        case preparing               // loading the model; the very first load also tunes it for this phone
-        case ready
+        case idle
+        case gettingReady(Double?)   // iOS is downloading its English speech model (rare; once)
         case listening
-        case transcribing
+        case finishing
         case failed(String)
     }
 
-    /// The model Argmax recommends for iPhone ("maximum accuracy"), as named on Hugging Face.
-    static let variant = "openai_whisper-large-v3-v20240930_626MB"
-    static let sizeLabel = "626 MB"
+    private(set) var phase: Phase = .idle
+    /// Words the recognizer has settled on.
+    private(set) var settledText = ""
+    /// Its current guess for the last few words; replaced as it hears more.
+    private(set) var guessText = ""
+    /// Recent loudness, newest last, 0...1, for the waveform.
+    private(set) var levels: [Float] = Array(repeating: 0, count: 28)
 
-    private(set) var phase: Phase = .needsDownload
-    /// What Whisper has heard so far while you're still holding the button.
-    private(set) var liveText = ""
-    /// 0...1, how loud the last moment of audio was (for the little level meter).
-    private(set) var level: Float = 0
+    /// Called with the question when 2 seconds of quiet end a take.
+    var onAutoSend: ((String) -> Void)?
 
-    private var kit: WhisperKit?
-    /// What's settled so far while you talk: earlier sentences Whisper won't change, and where they end in the
-    /// recording. Each pass only re-reads from there, so passes stay short however long you talk.
-    private var confirmedText = ""
-    private var confirmedEnd: Float = 0
-    /// How much of the recording the last pass covered (samples).
-    private var coveredSamples = 0
-    private var liveTask: Task<Void, Never>?
-    /// Set on letting go; a running pass checks it after every word and stops.
-    private let stopFlag = Flag()
-    private var levelTask: Task<Void, Never>?
+    static var isAvailable: Bool { if #available(iOS 26.0, *) { return true } else { return false } }
 
-    private static let folderKey = "whisperModelFolder"
-    private static var base: URL {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("WhisperKit", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        var values = URLResourceValues()
-        values.isExcludedFromBackup = true
-        var d = dir
-        try? d.setResourceValues(values)
-        return dir
-    }
-    /// The model's folder. Saved relative to the app's own WhisperKit folder: the app's full path on the phone
-    /// changes with every reinstall or update, so a saved full path stopped matching and voice asked to download
-    /// again (seen Oct 21). Older saved full paths are read by their tail.
-    private var savedFolder: URL? {
-        guard var p = UserDefaults.standard.string(forKey: Self.folderKey) else { return nil }
-        if let r = p.range(of: "/WhisperKit/") { p = String(p[r.upperBound...]) }
-        let url = Self.base.appendingPathComponent(p, isDirectory: true)
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
-    }
+    var text: String { [settledText, guessText].filter { !$0.isEmpty }.joined(separator: " ") }
+
+    private var session: AnyObject?   // a LiveSession on iOS 26+
+    private var silenceTask: Task<Void, Never>?
+    private var lastSoundAt = Date()
 
     init() {
-        if savedFolder != nil { phase = .preparing }
+        // The old WhisperKit model (606 MB) is no longer used: give the space back.
+        let old = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("WhisperKit", isDirectory: true)
+        try? FileManager.default.removeItem(at: old)
+        UserDefaults.standard.removeObject(forKey: "whisperModelFolder")
     }
 
-    var isDownloaded: Bool { savedFolder != nil }
-    var isBusy: Bool {
-        switch phase {
-        case .downloading, .preparing, .transcribing: return true
-        default: return false
-        }
-    }
-
-    /// The one-time download. Safe to call again after a failure; Hugging Face resumes what it can.
-    func download() async {
-        if case .downloading = phase { return }
-        phase = .downloading(0)
-        do {
-            let folder = try await WhisperKit.download(variant: Self.variant, downloadBase: Self.base) { progress in
-                let f = progress.fractionCompleted
-                // Progress updates can arrive late; never let one put a finished download back to "downloading".
-                Task { @MainActor in if case .downloading = self.phase { self.phase = .downloading(f) } }
-            }
-            let full = folder.standardizedFileURL.path, root = Self.base.standardizedFileURL.path + "/"
-            UserDefaults.standard.set(full.hasPrefix(root) ? String(full.dropFirst(root.count)) : full, forKey: Self.folderKey)
-            await prepare()
-        } catch {
-            phase = .failed("The voice download stopped: \(error.localizedDescription)")
-        }
-    }
-
-    /// Loads the model into memory. Seconds normally; the first time on a phone it can take a couple of minutes.
+    /// When Ask opens: make sure iOS has its speech model, so the first tap starts at once.
     func prepare() async {
-        guard kit == nil else { if !isBusy { phase = .ready }; return }
-        guard let folder = savedFolder else { phase = .needsDownload; return }
-        phase = .preparing
-        do {
-            let config = WhisperKitConfig(modelFolder: folder.path, verbose: false, logLevel: .error,
-                                          prewarm: true, load: true, download: false)
-            let t0 = Date()
-            kit = try await WhisperKit(config)
-            NSLog("ShootDesk voice: model ready after %.0f s", Date().timeIntervalSince(t0))
-            phase = .ready
-        } catch {
-            phase = .failed("Couldn't load the voice model: \(error.localizedDescription)")
-        }
+        guard #available(iOS 26.0, *) else { return }
+        do { try await LiveSession.ensureModel { [weak self] f in self?.phase = .gettingReady(f) } }
+        catch { phase = .failed("Voice isn't available: \(error.localizedDescription)") }
+        if case .gettingReady = phase { phase = .idle }
     }
 
-    /// Finger down: start recording. Returns false if the mic isn't allowed or the model isn't ready.
-    func start() async -> Bool {
-        NSLog("ShootDesk voice: hold, phase %@", "\(phase)")
-        guard phase == .ready, let kit else { return false }
-        guard await AudioProcessor.requestRecordPermission() else {
-            phase = .failed("ShootDesk isn't allowed to use the microphone. Turn it on in Settings > ShootDesk.")
-            return false
-        }
-        liveText = ""
-        confirmedText = ""
-        confirmedEnd = 0
-        coveredSamples = 0
-        do {
-            try kit.audioProcessor.startRecordingLive(inputDeviceID: nil, callback: nil)
-        } catch {
-            phase = .failed("The microphone didn't start: \(error.localizedDescription)")
-            return false
-        }
+    /// Tap: start listening. The panel shows straight away; the microphone follows a moment later.
+    func start() {
+        guard #available(iOS 26.0, *), phase == .idle || isFailed else { return }
+        settledText = ""; guessText = ""
+        levels = Array(repeating: 0, count: levels.count)
         phase = .listening
-        // Words as you talk: pass after pass, back to back, each starting where the settled part ends, and the
-        // words shown as Whisper writes them, not when a pass finishes.
-        liveTask = Task { [weak self] in
-            while let self, self.phase == .listening {
-                let fresh = kit.audioProcessor.audioSamples.count - self.coveredSamples
-                if fresh < 16_000 / 2 {   // under half a second of new sound: wait for more
-                    try? await Task.sleep(nanoseconds: 120_000_000)
-                    continue
-                }
-                await self.pass(settle: true)
+        lastSoundAt = Date()
+        Task {
+            guard await AVAudioApplication.requestRecordPermission() else {
+                phase = .failed("ShootDesk isn't allowed to use the microphone. Turn it on in Settings > ShootDesk.")
+                return
             }
+            let live = LiveSession()
+            session = live
+            do {
+                try await live.start(
+                    onText: { [weak self] settled, guess in
+                        guard let self else { return }
+                        if !settled.isEmpty { self.settledText = [self.settledText, settled].filter { !$0.isEmpty }.joined(separator: " ") }
+                        self.guessText = guess
+                    },
+                    onLevel: { [weak self] level in
+                        guard let self else { return }
+                        self.levels.removeFirst(); self.levels.append(level)
+                        if level > 0.08 { self.lastSoundAt = Date() }
+                    })
+            } catch {
+                session = nil
+                phase = .failed("The microphone didn't start: \(error.localizedDescription)")
+                return
+            }
+            watchForQuiet()
         }
-        levelTask = Task { [weak self] in
+    }
+
+    private var isFailed: Bool { if case .failed = phase { return true }; return false }
+
+    /// After something's been said, 2 seconds of quiet sends it.
+    private func watchForQuiet() {
+        silenceTask?.cancel()
+        silenceTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 80_000_000)
+                try? await Task.sleep(nanoseconds: 150_000_000)
                 guard let self, self.phase == .listening else { return }
-                self.level = min(1, max(0, kit.audioProcessor.relativeEnergy.last ?? 0))
+                if !self.text.isEmpty, Date().timeIntervalSince(self.lastSoundAt) >= 2 {
+                    let q = await self.finish()
+                    if !q.isEmpty { self.onAutoSend?(q) }
+                    return
+                }
             }
         }
-        return true
     }
 
-    /// Finger up: stop and return the final text (empty if nothing was said).
-    func stop() async -> String {
-        guard phase == .listening, let kit else { return "" }
-        liveTask?.cancel(); levelTask?.cancel()
-        kit.audioProcessor.stopRecording()
-        level = 0
-        phase = .transcribing
-        // Stop the pass that's running (it ends at its next word), then read from the settled point to the end.
-        stopFlag.set(true)
-        await liveTask?.value
-        stopFlag.set(false)
-        coveredSamples = 0
-        let started = Date()
-        await pass(settle: false)
-        NSLog("ShootDesk voice: final text %.1f s after letting go", Date().timeIntervalSince(started))
-        let text = liveText
-        liveText = ""
-        phase = .ready
-        return text
-    }
-
-    /// Finger slid away: throw the recording out.
-    func cancel() {
-        guard phase == .listening, let kit else { return }
-        liveTask?.cancel(); levelTask?.cancel()
-        kit.audioProcessor.stopRecording()
-        level = 0
-        liveText = ""
-        phase = .ready
-    }
-
-    func deleteModel() {
-        cancel()
-        kit = nil
-        if let folder = savedFolder { try? FileManager.default.removeItem(at: folder) }
-        UserDefaults.standard.removeObject(forKey: Self.folderKey)
-        phase = .needsDownload
-    }
-
-    func clearError() {
-        if case .failed = phase { phase = kit != nil ? .ready : (isDownloaded ? .preparing : .needsDownload) }
-    }
-
-    /// One read of the recording from the settled point on. While you're still talking (`settle`), every
-    /// sentence but the last is settled, so the next pass starts after it.
-    private func pass(settle: Bool) async {
-        guard let kit else { return }
-        let samples = Array(kit.audioProcessor.audioSamples)
-        guard samples.count > 16_000 / 3 else { return }   // under a third of a second: nothing said
-        coveredSamples = samples.count
-        var options = DecodingOptions(language: "en", skipSpecialTokens: true, withoutTimestamps: false)
-        options.clipTimestamps = [confirmedEnd]
-        // No name hint: it made Whisper read ~200 extra words on every pass (slow), and its in-progress text
-        // showed the agent list (Kyle, Oct 21). Claude copes with a misheard name from context.
-        let stop = stopFlag
-        let settledSoFar = confirmedText
+    /// Send button (or the quiet timer): stop and return the final text.
+    func finish() async -> String {
+        guard phase == .listening else { return "" }
+        silenceTask?.cancel()
+        phase = .finishing
         let t0 = Date()
-        var results: [TranscriptionResult] = []
-        do {
-            results = try await kit.transcribe(audioArray: samples, decodeOptions: options, callback: { progress in
-                // Letting go stops a pass that's still running, so the last bit can start straight away.
-                if stop.isSet { return false }
-                let partial = Self.clean(progress.text)
-                Task { @MainActor [weak self] in
-                    guard let self, !partial.isEmpty else { return }
-                    self.liveText = Self.join(settledSoFar, partial)
+        if #available(iOS 26.0, *), let live = session as? LiveSession {
+            await live.finish()
+        }
+        NSLog("ShootDesk voice: final text %.2f s after stopping", Date().timeIntervalSince(t0))
+        session = nil
+        let q = text
+        settledText = ""; guessText = ""
+        phase = .idle
+        return q
+    }
+
+    /// X: throw the take away.
+    func cancel() {
+        silenceTask?.cancel()
+        if #available(iOS 26.0, *), let live = session as? LiveSession {
+            Task { await live.cancel() }
+        }
+        session = nil
+        settledText = ""; guessText = ""
+        phase = .idle
+    }
+
+    func clearError() { if isFailed { phase = .idle } }
+}
+
+/// One listening session: the microphone, Apple's dictation recognizer, and the stream between them.
+@available(iOS 26.0, *)
+@MainActor
+final class LiveSession {
+    private let engine = AVAudioEngine()
+    private var analyzer: SpeechAnalyzer?
+    private var input: AsyncStream<AnalyzerInput>.Continuation?
+    private var results: Task<Void, Never>?
+
+    private static func recognizer() async -> DictationTranscriber {
+        let locale = await DictationTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en-US")) ?? Locale(identifier: "en-US")
+        return DictationTranscriber(locale: locale, preset: .progressiveShortDictation)
+    }
+
+    /// Downloads iOS's English speech model if this phone doesn't have it yet.
+    static func ensureModel(progress: @escaping (Double?) -> Void) async throws {
+        let r = await recognizer()
+        if let request = try await AssetInventory.assetInstallationRequest(supporting: [r]) {
+            progress(nil)
+            let p = request.progress
+            let watch = Task { @MainActor in
+                while !Task.isCancelled { progress(p.fractionCompleted); try? await Task.sleep(nanoseconds: 300_000_000) }
+            }
+            defer { watch.cancel() }
+            try await request.downloadAndInstall()
+        }
+    }
+
+    func start(onText: @escaping (_ settled: String, _ guess: String) -> Void,
+               onLevel: @escaping (Float) -> Void) async throws {
+        let recognizer = await Self.recognizer()
+        try await Self.ensureModel { _ in }
+
+        let audio = AVAudioSession.sharedInstance()
+        try audio.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+        try audio.setActive(true, options: .notifyOthersOnDeactivation)
+
+        let inputNode = engine.inputNode
+        // The microphone's own format. Some setups (the simulator among them) report an empty one until asked
+        // for the hardware side, so fall back to that.
+        var micFormat = inputNode.outputFormat(forBus: 0)
+        if micFormat.sampleRate == 0 || micFormat.channelCount == 0 { micFormat = inputNode.inputFormat(forBus: 0) }
+        // What the recognizer wants (16 kHz mono, usually). Asked plainly if the "close to the mic" match fails.
+        var target = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [recognizer], considering: micFormat)
+        if target == nil { target = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [recognizer]) }
+        // Last resort: the recognizer's usual input, 16 kHz mono. (The simulator offers no format at all: Apple's
+        // engine doesn't run there, checked Oct 21. A real iPhone should.)
+        if target == nil { target = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16_000, channels: 1, interleaved: false) }
+        NSLog("ShootDesk voice: mic %@, recognizer %@", micFormat.description, target?.description ?? "none")
+        guard let target, micFormat.sampleRate > 0, micFormat.channelCount > 0,
+              let converter = AVAudioConverter(from: micFormat, to: target) else {
+            throw NSError(domain: "ShootDesk", code: 1, userInfo: [NSLocalizedDescriptionKey: "No usable audio format"])
+        }
+
+        let (stream, continuation) = AsyncStream<AnalyzerInput>.makeStream()
+        input = continuation
+        let analyzer = SpeechAnalyzer(modules: [recognizer])
+        self.analyzer = analyzer
+        try await analyzer.prepareToAnalyze(in: target)
+        try await analyzer.start(inputSequence: stream)
+
+        results = Task { @MainActor in
+            do {
+                for try await r in recognizer.results {
+                    let t = String(r.text.characters).trimmingCharacters(in: .whitespacesAndNewlines)
+                    if r.isFinal { onText(t, "") } else { onText("", t) }
                 }
-                return nil
-            })
-        } catch {
-            NSLog("ShootDesk voice: pass failed: %@", "\(error)")
+            } catch {}
         }
-        NSLog("ShootDesk voice: pass %.1f s of sound from %.1f s, took %.1f s, %d segments: %@",
-              Double(samples.count) / 16_000, Double(confirmedEnd), Date().timeIntervalSince(t0),
-              results.flatMap(\.segments).count, results.map(\.text).joined(separator: " | "))
-        if stop.isSet { return }   // stopped early by letting go: incomplete, the final pass redoes this part
-        let segments = results.flatMap(\.segments).filter { $0.end > confirmedEnd }
-        if settle, segments.count > 1 {
-            let done = segments.dropLast()
-            confirmedText = Self.join(confirmedText, Self.clean(done.map(\.text).joined(separator: " ")))
-            confirmedEnd = done.last?.end ?? confirmedEnd
-            liveText = Self.join(confirmedText, Self.clean(segments.last?.text ?? ""))
-        } else {
-            let rest = Self.clean(segments.map(\.text).joined(separator: " "))
-            if !rest.isEmpty || settle == false { liveText = Self.join(confirmedText, rest) }
+
+        inputNode.installTap(onBus: 0, bufferSize: 2048, format: micFormat) { buffer, _ in
+            reportLevel(of: buffer, to: onLevel)
+            if let converted = LiveSession.convert(buffer, with: converter, to: target) {
+                continuation.yield(AnalyzerInput(buffer: converted))
+            }
         }
+        engine.prepare()
+        try engine.start()
     }
 
-    nonisolated private static func join(_ a: String, _ b: String) -> String {
-        [a, b].filter { !$0.isEmpty }.joined(separator: " ")
+    func finish() async {
+        stopMic()
+        input?.finish()
+        try? await analyzer?.finalizeAndFinishThroughEndOfInput()
+        await results?.value
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
-    /// Whisper marks silence as "[BLANK_AUDIO]" and similar; drop those and tidy the spaces.
-    nonisolated static func clean(_ s: String) -> String {
-        var t = s.replacingOccurrences(of: "\\[[^\\]]*\\]", with: "", options: .regularExpression)
-        t = t.replacingOccurrences(of: "\\([^)]*\\)", with: "", options: .regularExpression)
-        t = t.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-        return t.trimmingCharacters(in: .whitespacesAndNewlines)
+    func cancel() async {
+        stopMic()
+        input?.finish()
+        await analyzer?.cancelAndFinishNow()
+        results?.cancel()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    private func stopMic() {
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+    }
+
+    nonisolated static func convert(_ buffer: AVAudioPCMBuffer, with converter: AVAudioConverter,
+                                    to format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        let ratio = format.sampleRate / buffer.format.sampleRate
+        let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 32
+        guard let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return nil }
+        var fed = false
+        var error: NSError?
+        converter.convert(to: out, error: &error) { _, status in
+            if fed { status.pointee = .noDataNow; return nil }
+            fed = true
+            status.pointee = .haveData
+            return buffer
+        }
+        return error == nil && out.frameLength > 0 ? out : nil
     }
 }
 
-/// A yes/no that a running transcription can check from its own thread.
-final class Flag: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value = false
-    var isSet: Bool { lock.lock(); defer { lock.unlock() }; return value }
-    func set(_ v: Bool) { lock.lock(); value = v; lock.unlock() }
+/// Loudness of one microphone buffer, scaled so normal speech fills most of the waveform.
+private func reportLevel(of buffer: AVAudioPCMBuffer, to report: @escaping (Float) -> Void) {
+    guard let data = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return }
+    var sum: Float = 0
+    for i in 0..<Int(buffer.frameLength) { sum += data[i] * data[i] }
+    let rms = (sum / Float(buffer.frameLength)).squareRoot()
+    let level = min(1, max(0, (20 * log10(max(rms, 1e-7)) + 55) / 45))   // about -55 dB silent, -10 dB loud
+    Task { @MainActor in report(level) }
 }

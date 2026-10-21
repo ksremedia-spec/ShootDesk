@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Ask questions about the business; Claude answers from a fresh snapshot of your Aryeo data.
 /// Answers stream in as a polished chat: tappable shoot and agent cards, a chart when it helps,
-/// follow-up questions to tap, and press-and-hold voice (WhisperKit, on the phone).
+/// follow-up questions to tap, and tap-to-talk voice (Apple's on-device speech recognition).
 struct AskView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var size
@@ -14,10 +14,6 @@ struct AskView: View {
     @State private var askTask: Task<Void, Never>?
     @State private var sendTick = 0
     @State private var micTick = 0
-    @State private var offerVoice = false
-    @State private var voiceNote: String?
-    @State private var holding = false
-    @State private var holdTask: Task<Void, Never>?
     @FocusState private var focused: Bool
 
     struct Turn: Identifiable, Codable, Equatable {
@@ -88,14 +84,9 @@ struct AskView: View {
             .appDestinations(ns)
             .onChange(of: turns) { _, t in AskHistory.save(t) }
             .task {
-                // Get the voice model into memory early, so the first hold doesn't wait on it.
-                if voice.isDownloaded { await voice.prepare() }
-            }
-            .alert("Turn on voice?", isPresented: $offerVoice) {
-                Button("Download \(VoiceInput.sizeLabel)") { Task { await voice.download() } }
-                Button("Not now", role: .cancel) {}
-            } message: {
-                Text("Hold the mic and talk; let go to send. Voice needs a one-time \(VoiceInput.sizeLabel) download, so use Wi-Fi. What you say is turned into text on the phone and never leaves it.")
+                // Make sure iOS has its speech model, so the first tap starts listening at once.
+                voice.onAutoSend = { q in ask(q) }
+                await voice.prepare()
             }
         }
     }
@@ -179,7 +170,7 @@ struct AskView: View {
                 ClaudeMark(size: 26)
                 Text("Ask about your business").font(.address(22))
             }
-            Text(model.money == nil ? "Answered from live Aryeo data. Hold the mic to talk." : "Answered from live Aryeo and Stripe data. Hold the mic to talk.")
+            Text(model.money == nil ? "Answered from live Aryeo data." : "Answered from live Aryeo and Stripe data.")
                 .foregroundStyle(.secondary)
             if model.claude == nil {
                 Text("Add your Claude key in Settings to use Ask.").font(.footnote).foregroundStyle(.orange)
@@ -209,10 +200,11 @@ struct AskView: View {
 
     // MARK: Input
 
-    private var listening: Bool { voice.phase == .listening }
+    private var listening: Bool { voice.phase == .listening || voice.phase == .finishing }
 
-    /// Voice only (Kyle, Oct 21): one big talk button, held to ask. No text box. While you hold, the words appear
-    /// above it. Folded, the new-question button sits to its left (the open Duo has it in the title bar).
+    /// Voice only (Kyle, Oct 21): tap the mic once and a listening panel opens at once (a tap you feel, a soft
+    /// sound, a live waveform and the words as they come); it sends itself after 2 seconds of quiet. The arrow
+    /// sends sooner, the X throws it away. No captions on screen.
     private var inputArea: some View {
         VStack(spacing: 8) {
             if let line = voiceStatusLine {
@@ -222,14 +214,16 @@ struct AskView: View {
                     .background(.regularMaterial, in: Capsule())
                     .transition(.opacity)
             }
-            if listening || voice.phase == .transcribing {
-                ListeningBar(level: voice.level, text: voice.liveText, transcribing: voice.phase == .transcribing)
-                    .padding(.horizontal, 16).padding(.vertical, 10)
-                    .frame(maxWidth: 520, alignment: .leading)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            if listening {
+                ListeningPanel(voice: voice,
+                               cancel: { voice.cancel(); AskSounds.play(.micOff); micTick += 1 },
+                               send: { Task { let q = await voice.finish(); AskSounds.play(.micOff); if !q.isEmpty { ask(q) } } })
+                    .frame(maxWidth: 560)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
+            } else {
+                micButton
+                    .transition(.opacity)
             }
-            micButton
         }
         .padding(.horizontal, Gutter.of(size))
         .padding(.top, 28)
@@ -245,94 +239,38 @@ struct AskView: View {
                 .allowsHitTesting(false)
         }
         .animation(.snappy, value: voice.phase)
-        .animation(.snappy, value: voiceNote)
     }
 
+    /// Real status only: iOS fetching its speech model, or something that went wrong.
     private var voiceStatusLine: String? {
-        if let voiceNote { return voiceNote }
         switch voice.phase {
-        case .downloading(let f) where f >= 0.999: return "Download done. Setting up voice…"
-        case .downloading(let f): return "Downloading voice… \(Int(f * 100))%"
-        case .preparing: return "Getting voice ready… the first time can take a couple of minutes"
-        case .listening: return "Let go to send, slide up to cancel"
-        case .ready where turns.isEmpty && !thinking: return "Hold to ask"
+        case .gettingReady(let f?): return "Getting voice ready… \(Int(f * 100))%"
+        case .gettingReady(nil): return "Getting voice ready…"
         case .failed(let m): return m
         default: return nil
         }
     }
 
-    /// Hold to talk: finger down starts recording, finger up sends, sliding up and away cancels.
+    /// Tap to talk.
     private var micButton: some View {
-        Image(systemName: listening ? "waveform" : "mic.fill")
-            .font(.title2.weight(.semibold))
-            .symbolEffect(.variableColor.iterative, isActive: listening)
-            .frame(width: 68, height: 68)
-            .background(Theme.accent, in: Circle())
-            .foregroundStyle(.white)
-            .shadow(color: Theme.accent.opacity(listening ? 0.55 : 0.25), radius: listening ? 18 : 8)
-            .opacity(thinking ? 0.45 : 1)
-            .scaleEffect(holding ? 1.12 : 1)
-            .animation(.snappy, value: holding)
-            .contentShape(Circle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { v in
-                        if !holding { holding = true; beginHold() }
-                        _ = v
-                    }
-                    .onEnded { v in
-                        holding = false
-                        endHold(cancelled: v.translation.height < -60)
-                    }
-            )
-            .accessibilityLabel("Hold to talk")
-            .accessibilityAddTraits(.isButton)
-    }
-
-    private func beginHold() {
-        voice.clearError()
-        voiceNote = nil
-        switch voice.phase {
-        case .needsDownload:
-            offerVoice = true
-        case .preparing:
-            Task { await voice.prepare() }
-        case .ready:
-            guard !thinking, model.claude != nil else { return }
+        Button {
+            guard !thinking, model.claude != nil, VoiceInput.isAvailable else { return }
+            voice.clearError()
             focused = false
-            holdTask = Task {
-                if await voice.start() {
-                    AskSounds.play(.micOn)
-                    micTick += 1
-                }
-            }
-        default:
-            break
-        }
-    }
-
-    private func endHold(cancelled: Bool) {
-        let started = holdTask
-        holdTask = nil
-        Task {
-            await started?.value
-            guard voice.phase == .listening else { return }
-            if cancelled {
-                voice.cancel()
-                AskSounds.play(.micOff)
-                return
-            }
-            let text = await voice.stop()
-            AskSounds.play(.micOff)
             micTick += 1
-            if text.isEmpty {
-                voiceNote = "Didn't catch that. Hold the mic while you talk."
-                try? await Task.sleep(nanoseconds: 2_500_000_000)
-                voiceNote = nil
-            } else {
-                ask(text)
-            }
+            AskSounds.play(.micOn)
+            voice.start()
+        } label: {
+            Image(systemName: "mic.fill")
+                .font(.title2.weight(.semibold))
+                .frame(width: 68, height: 68)
+                .background(Theme.accent, in: Circle())
+                .foregroundStyle(.white)
+                .shadow(color: Theme.accent.opacity(0.25), radius: 8)
+                .opacity(thinking ? 0.45 : 1)
         }
+        .buttonStyle(.pressable)
+        .accessibilityLabel("Talk")
     }
 
     // MARK: Asking
@@ -428,28 +366,78 @@ struct Breathing: ViewModifier {
     }
 }
 
-/// Shown in place of the text field while you hold the mic: a live level meter and the words so far.
-struct ListeningBar: View {
-    let level: Float
-    let text: String
-    let transcribing: Bool
+/// While listening: a red dot, a waveform that moves with your voice, and the words as they come (the
+/// recognizer's still-settling guess in grey). X throws it away, the arrow sends now.
+struct ListeningPanel: View {
+    let voice: VoiceInput
+    let cancel: () -> Void
+    let send: () -> Void
+    @State private var pulse = false
 
     var body: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 3) {
-                ForEach(0..<5, id: \.self) { i in
-                    Capsule()
-                        .fill(Theme.accent)
-                        .frame(width: 3, height: 6 + CGFloat(level) * 20 * [0.5, 0.8, 1, 0.8, 0.5][i])
-                }
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Circle().fill(Color.red).frame(width: 9, height: 9)
+                    .opacity(pulse ? 0.35 : 1)
+                    .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true), value: pulse)
+                    .onAppear { pulse = true }
+                Text(voice.phase == .finishing ? "Sending" : "Listening")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                Spacer()
             }
-            .animation(.easeOut(duration: 0.1), value: level)
-            .frame(height: 28)
-            Text(transcribing ? (text.isEmpty ? "Writing it down…" : text) : (text.isEmpty ? "Listening…" : text))
-                .lineLimit(2)
-                .foregroundStyle(text.isEmpty ? .secondary : .primary)
-                .contentTransition(.opacity)
+            Waveform(levels: voice.levels)
+                .frame(height: 38)
+            if !voice.text.isEmpty {
+                (Text(voice.settledText.isEmpty ? "" : voice.settledText + " ")
+                    + Text(voice.guessText).foregroundStyle(.secondary))
+                    .font(.body)
+                    .lineLimit(4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentTransition(.opacity)
+                    .animation(.easeOut(duration: 0.15), value: voice.text)
+            }
+            HStack {
+                Button(action: cancel) {
+                    Image(systemName: "xmark").font(.body.weight(.semibold))
+                        .frame(width: 44, height: 44)
+                        .background(Color(.tertiarySystemFill), in: Circle())
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.pressable)
+                .accessibilityLabel("Cancel")
+                Spacer()
+                Button(action: send) {
+                    Image(systemName: "arrow.up").font(.body.weight(.bold))
+                        .frame(width: 44, height: 44)
+                        .background(Theme.accent, in: Circle())
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.pressable)
+                .disabled(voice.text.isEmpty || voice.phase == .finishing)
+                .opacity(voice.text.isEmpty ? 0.4 : 1)
+                .accessibilityLabel("Send")
+            }
         }
+        .padding(14)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.accent.opacity(0.55), lineWidth: 1.5))
+    }
+}
+
+/// Bars that follow the microphone level, newest on the right.
+struct Waveform: View {
+    let levels: [Float]
+    var body: some View {
+        HStack(alignment: .center, spacing: 3) {
+            ForEach(Array(levels.enumerated()), id: \.offset) { _, l in
+                Capsule()
+                    .fill(Theme.accent)
+                    .frame(width: 4, height: max(4, CGFloat(l) * 38))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .animation(.easeOut(duration: 0.08), value: levels)
     }
 }
 

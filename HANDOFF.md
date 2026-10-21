@@ -296,6 +296,24 @@ it may redo this after an app reinstall). Kyle (Oct 21): fine if it's a one-time
 if it bites: `openai_whisper-small.en_217MB` (much faster to prepare and run, a bit less accurate on names). `devicectl ... launch --console` restarts the app on
 the phone each time; don't use it without asking Kyle.
 
+## Oct 21: voice rebuilt once, on Apple's engine (Kyle: "awful, clunky"; asked for one researched change)
+
+Research (WhisperKit paper, SpeechAnalyzer guides, hold-to-talk UX write-ups): Whisper isn't a streaming model, so
+live words mean re-reading audio again and again; the 626 MB model was slow to prepare and to run. Kyle chose Apple's
+on-device engine and tap-to-talk (he dislikes holding), auto-send after 2 s of quiet, and no captions.
+- `App/Voice.swift`: `VoiceInput` + `LiveSession` on `SpeechAnalyzer` with `DictationTranscriber`
+  (`.progressiveShortDictation`: live guesses, punctuation). Mic tap -> `AVAudioConverter` -> analyzer. Settled text
+  plus a grey "guess"; loudness drives the waveform and the 2-second quiet timer. The old WhisperKit folder is deleted
+  on launch (frees 606 MB). WhisperKit removed from `project.yml`; CLAUDE.md back to "no third-party packages".
+- `Views/AskView.swift`: tap the mic -> `ListeningPanel` (pulsing red dot, "Listening", waveform, live words, X and
+  send); haptic + sound on start. Removed "Hold to ask", "Let go to send…" and the download prompt; Settings > Ask is
+  just the sounds switch.
+- Measured on the Mac (Apple's engine fed a recorded 4-second question in real time, `say` + a test script): first
+  word after 0.56 s, words kept pace, final punctuated text 0.05 s after stopping.
+- The SIMULATOR CAN'T RUN IT: the dictation model shows "installed" but the engine offers no audio formats there
+  (logged), so it fails with "No usable audio format". Kyle chose not to add a fallback engine. Installed on Kyle's
+  iPhone Oct 21; not yet seen working there. Don't test voice by playing audio from the Mac (unreliable; Kyle asked).
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.

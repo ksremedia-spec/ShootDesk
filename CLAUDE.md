@@ -13,7 +13,7 @@ Current state, unbuilt changes and the verification list live in `HANDOFF.md`. R
 **Build setup**
 - XcodeGen project: run `xcodegen` here to regenerate `ShootDesk.xcodeproj` after adding or removing files (`brew install xcodegen`).
 - SwiftUI app, iOS 17+ deployment target, Swift 5 language mode, iPhone only. Built and run on the iPhone Duo simulator (iOS 27.1, Xcode 27.1).
-- One third-party package, and only one: WhisperKit (Argmax, MIT licence, `https://github.com/argmaxinc/argmax-oss-swift`, product `WhisperKit`), for press-and-hold voice in Ask. Kyle chose it over Apple's speech recognition on Oct 20 2026 because it handles names better. Its speech model downloads to the phone on first use (not bundled). Ask Kyle before adding any other package.
+- No third-party packages. (WhisperKit was added Oct 20 2026 for voice and removed Oct 21: Whisper isn't built for live speech and was slow on the phone. Voice in Ask uses Apple's SpeechAnalyzer / DictationTranscriber, iOS 26+.) Ask Kyle before adding any package.
 - Maps are Apple Maps (MapKit); the Directions button opens the Google Maps app if it's installed, otherwise Google Maps on the web.
 - Builds happen on Kyle's Mac (Xcode 27.1, the iPhone Duo simulator). GitHub no longer builds the app: the workflow was deleted Oct 19, so a push only stores the code. Steps in `HANDOFF.md`, "Build and run on the Mac".
 - `RootView` still honors a `-startTab <tab>` launch argument, left over from the old GitHub screenshot tour. Nothing passes it now; don't build features on it.

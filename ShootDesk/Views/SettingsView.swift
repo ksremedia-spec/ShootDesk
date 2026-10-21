@@ -149,24 +149,10 @@ struct SettingsView: View {
     private var askSection: some View {
         Section {
             Toggle("Sounds in Ask", isOn: $askSounds)
-            switch model.voice.phase {
-            case .needsDownload:
-                Button("Download voice (\(VoiceInput.sizeLabel))") { Task { await model.voice.download() } }
-            case .downloading(let f):
-                HStack { Text("Downloading voice"); Spacer(); Text("\(Int(f * 100))%").monospacedDigit().foregroundStyle(.secondary) }
-            case .preparing:
-                HStack { Text("Getting voice ready"); Spacer(); ProgressView() }
-            case .failed(let m):
-                Text(m).font(.footnote).foregroundStyle(.orange)
-                Button("Try again") { model.voice.clearError(); Task { if model.voice.isDownloaded { await model.voice.prepare() } else { await model.voice.download() } } }
-            default:
-                LabeledContent("Voice", value: "Ready (\(VoiceInput.sizeLabel) on this phone)")
-                Button("Remove voice download", role: .destructive) { model.voice.deleteModel() }
-            }
         } header: {
             Text("Ask")
         } footer: {
-            Text("Hold the mic in Ask and talk; let go to send. Speech is turned into text on the phone with WhisperKit (OpenAI's Whisper model), so your voice never leaves it. Sounds stay quiet when the phone is on silent.")
+            Text("Voice in Ask uses the iPhone's own speech recognition, on the phone, so your voice never leaves it. Sounds stay quiet when the phone is on silent.")
         }
     }
 

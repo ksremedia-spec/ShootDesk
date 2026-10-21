@@ -13,12 +13,6 @@ settings:
   base:
     DEVELOPMENT_TEAM: ""
 
-# The one outside package (see CLAUDE.md): WhisperKit, for press-and-hold voice in Ask.
-packages:
-  WhisperKit:
-    url: https://github.com/argmaxinc/argmax-oss-swift
-    exactVersion: 1.1.1
-
 targets:
   ShootDesk:
     type: application
@@ -30,8 +24,6 @@ targets:
           - "*.entitlements"
     dependencies:
       - target: ShootDeskWidget   # the Home Screen widget, built and embedded with the app
-      - package: WhisperKit
-        product: WhisperKit
     info:
       path: ShootDesk/Info.plist
       properties:
@@ -46,7 +38,8 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         NSPhotoLibraryAddUsageDescription: Saves listing photos from Aryeo to your Photos library.
-        NSMicrophoneUsageDescription: Hold the mic button in Ask to speak a question. Your voice is turned into text on the phone and never leaves it.
+        NSMicrophoneUsageDescription: Tap the mic in Ask to speak a question. Your voice is turned into text on the phone and never leaves it.
+        NSSpeechRecognitionUsageDescription: Turns what you say in Ask into text, on the phone.
         NSLocationWhenInUseUsageDescription: Works out the drive to your next shoot so ShootDesk can tell you when to leave.
         NSSupportsLiveActivities: true
         # Background refresh: iOS wakes the app between uses to pull the newest orders.
