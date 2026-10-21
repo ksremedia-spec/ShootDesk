@@ -212,6 +212,15 @@ shot date right): one fills the row, two share it; three or more keep the sidewa
 open Duo held wide. Then, at Kyle's request, Today's "This week": up
 to 3 shoots (open) or 1 (folded) share the width in a grid; more keep the sideways row. Checked open, two shoots.
 
+Oct 21, Kyle changed a business rule: a missing-deliverable flag (Missing on Today and Listings, the Today badge) is a
+one-day reminder. It shows for 24 hours from when the app first found it, then hides itself; he often shoots the
+exterior first and the rest weeks or months later. `FlagFirstSeen` (`App/AppModel.swift`, UserDefaults
+`flagFirstSeen`, order id -> date) records the first sighting; ids that stop being flagged are forgotten, so a later
+re-flag gets a new day. The one notification per flag is unchanged. CLAUDE.md's rule updated. Checked in the
+simulator: shown when new; with the date set 25 hours back (via `simctl spawn ... defaults write`; editing the plist
+file directly doesn't reach the running cache), Missing and the badge were gone. On Kyle's phone, flags showing now
+get their day starting from the first launch of this build.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.

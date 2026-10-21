@@ -409,6 +409,10 @@ final class AppModel {
             if j.hasFloorPlan && m.floorPlans.isEmpty { missing.append("floor plan") }
             if !missing.isEmpty { out.append(DeliveryFlag(job: j, missing: missing)) }
         }
+        // Kyle often shoots the exterior first and the rest weeks or months later, so a flag is a one-day
+        // reminder: it shows for 24 hours from when it was first found, then hides on its own.
+        let firstSeen = FlagFirstSeen.record(out.map(\.id))
+        out = out.filter { f in firstSeen[f.id].map { Date().timeIntervalSince($0) < 24 * 3600 } ?? true }
         deliveryFlags = out.sorted { ($0.job.start ?? .distantPast) < ($1.job.start ?? .distantPast) }
         flagsChecked = true
         await DeliveryAlerts.notify(deliveryFlags)
@@ -775,6 +779,20 @@ struct DeliveryFlag: Identifiable, Hashable {
 }
 
 /// One notification per shoot per missing thing, the first time it's found.
+/// When each missing-deliverable flag was first found (order id → date), kept on the phone.
+/// Ids no longer flagged are forgotten, so a shoot that's flagged again later gets a fresh day.
+enum FlagFirstSeen {
+    private static let key = "flagFirstSeen"
+
+    static func record(_ ids: [String], now: Date = Date()) -> [String: Date] {
+        let saved = (UserDefaults.standard.dictionary(forKey: key) as? [String: Double]) ?? [:]
+        var out: [String: Double] = [:]
+        for id in ids { out[id] = saved[id] ?? now.timeIntervalSince1970 }
+        UserDefaults.standard.set(out, forKey: key)
+        return out.mapValues { Date(timeIntervalSince1970: $0) }
+    }
+}
+
 enum DeliveryAlerts {
     private static let key = "notifiedMissing"
 
