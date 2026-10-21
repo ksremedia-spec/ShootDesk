@@ -105,7 +105,8 @@ struct TodayView: View {
                     emptyHero.padding(.horizontal, gutter)
                 }
 
-                if !model.deliveryFlags.isEmpty {
+                // One or two: a wide card each (see `MissingCard`); more: the usual sideways row.
+                if model.deliveryFlags.count > 2 {
                     Rail(title: "Missing", note: "video or floor plan not delivered",
                          items: model.deliveryFlags, cardWidth: wide ? 300 : 250) { f in
                         NavigationLink(value: AppRoute.shoot(f.job.id)) {
@@ -113,6 +114,19 @@ struct TodayView: View {
                         }
                         .buttonStyle(.pressable)
                     }
+                } else if !model.deliveryFlags.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SectionHeader(title: "Missing", note: "video or floor plan not delivered")
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: wide ? model.deliveryFlags.count : 1), spacing: 14) {
+                            ForEach(model.deliveryFlags) { f in
+                                NavigationLink(value: AppRoute.shoot(f.job.id)) {
+                                    MissingCard(flag: f).zoomSource(f.job.id, in: ns)
+                                }
+                                .buttonStyle(.pressable)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, gutter)
                 }
 
                 if upcoming.count > 1 {

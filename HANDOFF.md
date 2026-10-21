@@ -204,6 +204,13 @@ The Stripe mark (Money) and the Claude label (Ask) looked boxed in: iOS 26+ puts
 title-bar item. `TitleBarMark` (`Views/Components.swift`) turns it off (`sharedBackgroundVisibility(.hidden)`).
 Checked in the simulator, open Duo held wide.
 
+Oct 21, Kyle: Listings looked "very empty" unfolded. Cause: the Missing row (shoots missing a video or floor plan)
+showed one small card with the rest of the wide row blank; it only appears after the delivery check finishes, so the
+audit screenshots never caught it (not caused by the spacing pass, which only moved the search bar and added 2 pt).
+Now, with one or two flags, Listings and Today show a wide `MissingCard` (photo left; address, agent, what's missing,
+shot date right): one fills the row, two share it; three or more keep the sideways row. Checked in the simulator,
+open Duo held wide. Same pattern, not changed: Today's "This week" row with two cards leaves the right third empty.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.

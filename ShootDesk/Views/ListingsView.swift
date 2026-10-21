@@ -93,7 +93,9 @@ struct ListingsView: View {
                     }
                     .padding(.horizontal, gutter)
                 } else {
-                    if !model.deliveryFlags.isEmpty {
+                    // One or two: a wide card each, so the row isn't one small card beside empty space.
+                    // More than that: the usual sideways row.
+                    if model.deliveryFlags.count > 2 {
                         Rail(title: "Missing", note: "\(model.deliveryFlags.count)", items: model.deliveryFlags,
                              cardWidth: wide ? 290 : 240) { f in
                             NavigationLink(value: AppRoute.shoot(f.job.id)) {
@@ -101,6 +103,19 @@ struct ListingsView: View {
                             }
                             .buttonStyle(.pressable)
                         }
+                    } else if !model.deliveryFlags.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionHeader(title: "Missing", note: "\(model.deliveryFlags.count)")
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: wide ? model.deliveryFlags.count : 1), spacing: 14) {
+                                ForEach(model.deliveryFlags) { f in
+                                    NavigationLink(value: AppRoute.shoot(f.job.id)) {
+                                        MissingCard(flag: f).zoomSource(f.job.id, in: ns)
+                                    }
+                                    .buttonStyle(.pressable)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, gutter)
                     }
                     if !upcoming.isEmpty {
                         Rail(title: "Upcoming", note: "\(upcoming.count)", items: upcoming, cardWidth: wide ? 290 : 220) { j in
@@ -467,5 +482,39 @@ struct ShootsMapView: View {
         if let first { s += " since \(FieldTime.format(first, "MMMM yyyy"))" }
         if let agent, agent.1 > 1 { s += ". Most with \(agent.0) (\(agent.1))." } else { s += "." }
         return s
+    }
+}
+
+/// A shoot that's missing its video or floor plan, laid out wide: the photo on the left, what's missing on the right.
+struct MissingCard: View {
+    let flag: DeliveryFlag
+    @Environment(\.horizontalSizeClass) private var size
+
+    var body: some View {
+        let job = flag.job
+        HStack(spacing: 14) {
+            Color.clear
+                .aspectRatio(16 / 10, contentMode: .fit)
+                .frame(width: size == .regular ? 200 : 132)
+                .overlay {
+                    if let url = job.heroURL { RemotePhoto(url: url, cornerRadius: 0) } else { DateArt(date: job.start) }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            VStack(alignment: .leading, spacing: 5) {
+                Text(job.street).font(.address(.headline)).foregroundStyle(.primary).lineLimit(1)
+                (Text(job.town.isEmpty ? "" : job.town + "   ") + Text(job.agentName).foregroundStyle(.tertiary))
+                    .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                Label(flag.line, systemImage: "exclamationmark.triangle.fill")
+                    .font(.subheadline.weight(.medium)).foregroundStyle(.orange).lineLimit(1)
+                if !flag.shotLine.isEmpty {
+                    Text(flag.shotLine).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 4)
+            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+        }
+        .padding(10)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .contentShape(Rectangle())
     }
 }
