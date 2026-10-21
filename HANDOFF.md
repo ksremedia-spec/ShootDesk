@@ -308,6 +308,12 @@ typing an address into Book a shoot (the simulator wouldn't take typing from aut
 
 ## Parked ideas (Kyle has NOT asked for these; raise, don't build)
 
+- PARKED Oct 20 at Kyle's request: add and delete listing photos from the app, the way Aryeo Go does. Checked Oct 20:
+  Aryeo's public API (docs.aryeo.com/api/aryeo, and their Go SDK) has no endpoint to upload, delete or reorder
+  listing images; it can only read them (it can update and delete videos). Aryeo Go uses Aryeo's private API.
+  Options raised: ask Aryeo support for API access (Claude can draft the email), or a button that opens the
+  listing's photos in Aryeo Go. Don't reverse-engineer the private API.
+
 - Placeholder pictures for shoots with no photos yet: Apple Look Around street image with a satellite snapshot
   fallback. Kyle liked the idea. No Zillow (terms + other photographers' work). Google only if Apple's coverage
   around Dartmouth / New Bedford is patchy.
