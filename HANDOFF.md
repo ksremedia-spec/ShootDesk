@@ -270,7 +270,8 @@ Oct 21, Kyle: progress for big saves to Photos ("Save all" photos, and saving a 
 don't). `App/Transfers.swift`: `TransferCenter` (on `AppModel.transfers`) tracks one save, asks iOS for background
 time, and drives a small pill bottom left on every tab (ring + "12 of 34", ticks and hides 4 s after) and a Live
 Activity (`TransferActivityAttributes` in `Core/NextShoot.swift`, `TransferLiveActivityWidget` in the widget): Lock
-Screen card with a bar and "28 of 34", Dynamic Island ring and percent. Videos now download through
+Screen card (redone Oct 21 after Kyle called the spacing broken: three padded rows, status and "25 of 34", the
+address, the bar), Dynamic Island ring and percent. Videos now download through
 `ProgressDownload` (URLSession task progress). If iOS stops the app in the background the card says "Paused. Open
 ShootDesk to finish." Checked in the simulator: Save all 34 on 129 Huttleston Ave, the pill counted up, and the Lock
 Screen card kept counting after leaving the app (iOS asked "allow Live Activities from ShootDesk?" the first time;

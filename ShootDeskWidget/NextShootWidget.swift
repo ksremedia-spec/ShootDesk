@@ -323,30 +323,28 @@ private struct TransferLockScreen: View {
 
     var body: some View {
         let s = context.state
-        HStack(alignment: .center, spacing: 14) {
-            Image(systemName: s.finished ? (s.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill") : "arrow.down.circle.fill")
-                .font(.system(size: 34))
-                .foregroundStyle(s.finished && !s.failed ? Color.green : (s.failed ? Color.orange : Self.accent))
-            VStack(alignment: .leading, spacing: 4) {
-                Text(Self.status(context))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(s.finished && !s.failed ? Color.green : Self.accent)
-                    .lineLimit(1)
-                Text(context.attributes.title)
-                    .font(.system(size: 22, weight: .semibold, design: .serif))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                if !s.finished {
-                    ProgressView(value: s.fraction).tint(Self.accent)
-                }
+        let tint = s.finished ? (s.failed ? Color.orange : Color.green) : Self.accent
+        // Three rows: what's happening and the count, the address, the bar. Padded in from the card's edges.
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: s.finished ? (s.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                                             : "arrow.down.circle.fill")
+                Text(Self.status(context)).lineLimit(1)
+                Spacer(minLength: 8)
+                Text(s.line).monospacedDigit().foregroundStyle(.white)
             }
-            Spacer(minLength: 4)
-            Text(s.line)
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .monospacedDigit()
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(tint)
+            Text(context.attributes.title)
+                .font(.system(size: 22, weight: .semibold, design: .serif))
                 .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            if !s.finished {
+                ProgressView(value: s.fraction).tint(Self.accent)
+            }
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
     }
 }
