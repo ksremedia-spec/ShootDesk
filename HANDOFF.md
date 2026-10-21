@@ -221,6 +221,16 @@ simulator: shown when new; with the date set 25 hours back (via `simctl spawn ..
 file directly doesn't reach the running cache), Missing and the badge were gone. On Kyle's phone, flags showing now
 get their day starting from the first launch of this build.
 
+Oct 21, Kyle: new card art for shoots with no photos yet (`PlaceholderArt` in `Views/Components.swift`, used by
+`ShootCard`), replacing the blue gradient date card on every shoot card (Listings, Today, Upcoming, agent pages).
+Styled like an Apple Calendar event: `Theme.accent` tint with a solid blue stripe on the left; the time in big serif,
+the date in blue, the agent on its own line (long names fit), and what the order includes ("Photos, drone, video")
+at the bottom. Under the card only the town shows (the agent is on the card); the small time chip is dropped there.
+Photo cards are unchanged (Kyle: "just change the placeholder cards for now"). Kyle turned down: sun/light hints,
+the house number, the agent on photo cards. Still on the old date art: the shoot page hero with no photo and no map
+position, Ask's small shoot chips (`DateTile`). Checked in the simulator, folded, dark mode. Not checked: light mode,
+the open Duo.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.

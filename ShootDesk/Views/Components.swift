@@ -404,10 +404,11 @@ struct ShootCard: View {
                 .frame(maxWidth: .infinity)
                 .overlay {
                     if let url = job.heroURL { RemotePhoto(url: url, cornerRadius: 0) }
-                    else { DateArt(date: job.start) }
+                    else { PlaceholderArt(job: job, showsAgent: showsAgent) }
                 }
                 .overlay(alignment: .topTrailing) {
-                    if showsTime, let s = job.start {
+                    // The placeholder already has the time in big type.
+                    if showsTime, job.heroURL != nil, let s = job.start {
                         Text(FieldTime.clockAMPM(s))
                             .font(.caption.weight(.semibold)).monospacedDigit()
                             .padding(.horizontal, 8).padding(.vertical, 4)
@@ -423,13 +424,61 @@ struct ShootCard: View {
                     Label(flag.line, systemImage: "exclamationmark.triangle.fill")
                         .font(.subheadline.weight(.medium)).foregroundStyle(.orange).lineLimit(1)
                 } else {
-                    (Text(job.town.isEmpty ? "" : job.town + "   ") + Text(showsAgent ? job.agentName : "").foregroundStyle(.tertiary))
+                    // Without photos the agent is on the card itself, so only the town goes here.
+                    let agent = showsAgent && job.heroURL != nil ? job.agentName : ""
+                    (Text(job.town.isEmpty ? "" : job.town + "   ") + Text(agent).foregroundStyle(.tertiary))
                         .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
             .padding(.horizontal, 2)
         }
         .contentShape(Rectangle())
+    }
+}
+
+/// The card art for a shoot with no photos yet, styled like an Apple Calendar event: a blue-tinted panel with
+/// a solid stripe down the left. The time in big type, then the date, then the agent on its own line (so long
+/// names fit), and what the order includes at the bottom.
+struct PlaceholderArt: View {
+    let job: Job
+    var showsAgent = true
+
+    private var includes: String {
+        var parts = ["Photos"]
+        if job.hasDrone { parts.append("drone") }
+        if job.hasVideo { parts.append("video") }
+        if job.hasFloorPlan { parts.append("floor plan") }
+        return parts.joined(separator: ", ")
+    }
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            Theme.accent.opacity(0.16)
+            Rectangle().fill(Theme.accent).frame(width: 5)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(job.start.map { FieldTime.clockAMPM($0) } ?? "Time to be set")
+                    .font(.address(30, weight: .regular))
+                    .minimumScaleFactor(0.7)
+                Text(job.start.map { FieldTime.format($0, "EEEE, MMM d") } ?? "Date to be set")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                    .padding(.top, 5)
+                if showsAgent {
+                    Text(job.agentName)
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.top, 3)
+                }
+                Spacer(minLength: 6)
+                Text(includes)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .lineLimit(1)
+            .padding(.leading, 19)
+            .padding([.trailing, .vertical], 14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .background(Color(.secondarySystemBackground))
     }
 }
 
