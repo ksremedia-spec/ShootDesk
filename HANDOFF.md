@@ -338,8 +338,14 @@ on-device engine and tap-to-talk (he dislikes holding), auto-send after 2 s of q
   nothing stalls the fade. Auto-send used to need the level under a fixed 0.08 (about -51 dB), which room noise
   never reaches; now it's 2 s with no new words from the recognizer and nothing louder than the room's own noise
   (a floor learned while listening, +0.25) (`VoiceInput.lastHeardAt`, `noiseFloor`).
-- Installed on Kyle's iPhone 16 Pro Max Oct 21. Simulator can't run the speech engine; the glow was seen folded
-  (with a temporary fake-listening switch, since removed); the latest panel and the open Duo were not.
+- Auto-send by words: Kyle confirmed it works on his phone (Oct 21). Done.
+- Glow still came in "phases" and the send still felt janky. Glow redrawn to be cheap: the blurred edge shapes are
+  fixed masks, only a big angular gradient behind them turns (`rotationEffect`, repeat-forever), and the voice only
+  changes opacity (core ring brighter, wide halo comes up). Before, thickness and blur followed the voice, which
+  re-blurred the full screen every frame. Sending: `LiveSession.stopMic` and giving the audio session back now run
+  off the main thread (the release isn't waited for).
+- Installed on Kyle's iPhone 16 Pro Max Oct 21. Simulator can't run the speech engine; this glow version and the
+  open Duo were not seen by me.
 
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the

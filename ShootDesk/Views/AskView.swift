@@ -522,24 +522,43 @@ struct EdgeGlow: View {
     var level: CGFloat
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown = false
+    @State private var turning = false
 
     var body: some View {
-        TimelineView(.animation(paused: reduceMotion)) { tl in
-            let turn = reduceMotion ? 0 : tl.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 5) / 5 * 360
-            let colors = AngularGradient(colors: VoiceColors.ring, center: .center, angle: .degrees(turn))
-            // Close to the iPhone's own screen corners; the blur hides any small difference.
-            let edge = RoundedRectangle(cornerRadius: 54, style: .continuous)
-            ZStack {
-                edge.strokeBorder(colors, lineWidth: 8 + level * 24).blur(radius: 10 + level * 14)
-                edge.strokeBorder(colors, lineWidth: 2 + level * 3).blur(radius: 1.5)
-            }
-            .animation(.easeOut(duration: 0.18), value: level)
+        // Cheap to draw, so the fade and the turning stay smooth: the blurred edge shapes are drawn once and never
+        // change; only the colors behind them turn, and your voice only changes brightness. (Until Oct 21 the
+        // thickness and blur followed your voice, which re-blurred the whole screen every frame and stuttered.)
+        let edge = RoundedRectangle(cornerRadius: 54, style: .continuous)   // close to the iPhone's screen corners
+        ZStack {
+            turningColors.mask { edge.strokeBorder(lineWidth: 3).blur(radius: 1.5) }
+            turningColors.mask { edge.strokeBorder(lineWidth: 18).blur(radius: 14) }
+                .opacity(0.55 + 0.45 * min(1, level))
+            // The wide halo comes up as you talk.
+            turningColors.mask { edge.strokeBorder(lineWidth: 40).blur(radius: 28) }
+                .opacity(0.85 * min(1, level))
         }
+        .animation(.easeOut(duration: 0.2), value: level)
         .ignoresSafeArea()
         .opacity(shown ? 1 : 0)
-        .onAppear { withAnimation(.easeOut(duration: 0.7)) { shown = true } }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.7)) { shown = true }
+            if !reduceMotion {
+                withAnimation(.linear(duration: 6).repeatForever(autoreverses: false)) { turning = true }
+            }
+        }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    /// Claude's colors in a ring, much bigger than the screen, slowly turning.
+    private var turningColors: some View {
+        GeometryReader { geo in
+            let side = hypot(geo.size.width, geo.size.height)
+            AngularGradient(colors: VoiceColors.ring, center: .center)
+                .frame(width: side, height: side)
+                .rotationEffect(.degrees(turning ? 360 : 0))
+                .position(x: geo.size.width / 2, y: geo.size.height / 2)
+        }
     }
 }
 

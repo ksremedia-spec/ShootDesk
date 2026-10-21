@@ -230,24 +230,35 @@ final class LiveSession {
     }
 
     func finish() async {
-        stopMic()
+        await stopMic()
         input?.finish()
         try? await analyzer?.finalizeAndFinishThroughEndOfInput()
         await results?.value
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        Self.releaseAudio()
     }
 
     func cancel() async {
-        stopMic()
+        await stopMic()
         input?.finish()
         await analyzer?.cancelAndFinishNow()
         results?.cancel()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        Self.releaseAudio()
     }
 
-    private func stopMic() {
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
+    /// Stopping the microphone and giving the audio back can each take a moment; both happen off the main thread
+    /// so the panel and glow animate away smoothly. Nothing waits for the audio to be given back.
+    private func stopMic() async {
+        let engine = self.engine
+        await Task.detached(priority: .userInitiated) {
+            engine.inputNode.removeTap(onBus: 0)
+            engine.stop()
+        }.value
+    }
+
+    private nonisolated static func releaseAudio() {
+        Task.detached(priority: .utility) {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
     }
 
     nonisolated static func convert(_ buffer: AVAudioPCMBuffer, with converter: AVAudioConverter,
