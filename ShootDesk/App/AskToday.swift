@@ -49,15 +49,4 @@ extension AppModel {
         }
         return lines.joined(separator: "\n")
     }
-
-    /// Words Whisper should expect when Kyle talks: his agents' names and the towns he shoots in.
-    /// Kept short, because Whisper only reads the last couple of hundred words of a hint.
-    var voiceHint: String {
-        let agents = customers.sorted { ($0.lastOrder ?? .distantPast) > ($1.lastOrder ?? .distantPast) }
-            .prefix(40).map(\.name)
-        let towns = Dictionary(grouping: visibleJobs.filter { !$0.town.isEmpty }, by: \.town)
-            .sorted { $0.value.count > $1.value.count }.prefix(25).map(\.key)
-        return "Horizon Home Media, Aryeo, Stripe. Agents: " + agents.joined(separator: ", ")
-            + ". Towns: " + towns.joined(separator: ", ") + "."
-    }
 }

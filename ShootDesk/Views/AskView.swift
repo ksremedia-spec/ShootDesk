@@ -301,7 +301,7 @@ struct AskView: View {
             guard !thinking, model.claude != nil else { return }
             focused = false
             holdTask = Task {
-                if await voice.start(hint: model.voiceHint) {
+                if await voice.start() {
                     AskSounds.play(.micOn)
                     micTick += 1
                 }

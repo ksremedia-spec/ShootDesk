@@ -286,8 +286,11 @@ simulator before the change: 14.3 s from letting go to text, no words while talk
 change, NOT measured: the simulator's mic didn't reliably hear the Mac's speaker, and the simulator runs the model on
 the Mac's CPU (a phone uses the Neural Engine), so it's the worst case. Bug found on Kyle's iPhone and fixed: after
 the download a late progress update set the state back to "Downloading voice 100%", so voice never became ready
-(workaround: close and reopen the app). Set-up now shows "Getting voice ready…". Next: Kyle tests on the phone; if
-still slow, consider a smaller/faster Whisper model (ask first). `devicectl ... launch --console` restarts the app on
+(workaround: close and reopen the app). Set-up now shows "Getting voice ready…". Then, from Kyle's phone test: the live
+text flipped to a jumbled agent list (Whisper's in-progress text includes the name hint), and the send waited on the
+running pass. Fixed: the name hint is gone entirely (it also cost ~200 extra tokens per pass; Kyle: Whisper shouldn't
+need it), and letting go stops the running pass (`Flag`, the callback returns false) before the final read. Installed
+on Kyle's iPhone, not yet tried there. If still slow on the phone, consider a smaller/faster Whisper model (ask first). `devicectl ... launch --console` restarts the app on
 the phone each time; don't use it without asking Kyle.
 
 Not checked, and why:

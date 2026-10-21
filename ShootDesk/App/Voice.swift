@@ -27,7 +27,6 @@ final class VoiceInput {
     private(set) var level: Float = 0
 
     private var kit: WhisperKit?
-    private var hint = ""
     /// What's settled so far while you talk: earlier sentences Whisper won't change, and where they end in the
     /// recording. Each pass only re-reads from there, so passes stay short however long you talk.
     private var confirmedText = ""
@@ -35,6 +34,8 @@ final class VoiceInput {
     /// How much of the recording the last pass covered (samples).
     private var coveredSamples = 0
     private var liveTask: Task<Void, Never>?
+    /// Set on letting go; a running pass checks it after every word and stops.
+    private let stopFlag = Flag()
     private var levelTask: Task<Void, Never>?
 
     private static let folderKey = "whisperModelFolder"
@@ -106,14 +107,13 @@ final class VoiceInput {
     }
 
     /// Finger down: start recording. Returns false if the mic isn't allowed or the model isn't ready.
-    func start(hint: String) async -> Bool {
+    func start() async -> Bool {
         NSLog("ShootDesk voice: hold, phase %@", "\(phase)")
         guard phase == .ready, let kit else { return false }
         guard await AudioProcessor.requestRecordPermission() else {
             phase = .failed("ShootDesk isn't allowed to use the microphone. Turn it on in Settings > ShootDesk.")
             return false
         }
-        self.hint = hint
         liveText = ""
         confirmedText = ""
         confirmedEnd = 0
@@ -154,13 +154,13 @@ final class VoiceInput {
         kit.audioProcessor.stopRecording()
         level = 0
         phase = .transcribing
-        // One pass at a time: let the one that's running finish (it already covers nearly everything), then
-        // read only what came after it, from the settled point. Usually a second or two of sound.
+        // Stop the pass that's running (it ends at its next word), then read from the settled point to the end.
+        stopFlag.set(true)
         await liveTask?.value
+        stopFlag.set(false)
+        coveredSamples = 0
         let started = Date()
-        if kit.audioProcessor.audioSamples.count - coveredSamples > 16_000 / 4 || liveText.isEmpty {
-            await pass(settle: false)
-        }
+        await pass(settle: false)
         NSLog("ShootDesk voice: final text %.1f s after letting go", Date().timeIntervalSince(started))
         let text = liveText
         liveText = ""
@@ -199,16 +199,16 @@ final class VoiceInput {
         coveredSamples = samples.count
         var options = DecodingOptions(language: "en", skipSpecialTokens: true, withoutTimestamps: false)
         options.clipTimestamps = [confirmedEnd]
-        if let tok = kit.tokenizer, !hint.isEmpty {
-            // Names and towns Whisper should expect, so "Rebello" doesn't come out "Rebel low".
-            let tokens = tok.encode(text: " " + hint).filter { $0 < tok.specialTokens.specialTokenBegin }
-            options.promptTokens = Array(tokens.suffix(200))
-        }
+        // No name hint: it made Whisper read ~200 extra words on every pass (slow), and its in-progress text
+        // showed the agent list (Kyle, Oct 21). Claude copes with a misheard name from context.
+        let stop = stopFlag
         let settledSoFar = confirmedText
         let t0 = Date()
         var results: [TranscriptionResult] = []
         do {
             results = try await kit.transcribe(audioArray: samples, decodeOptions: options, callback: { progress in
+                // Letting go stops a pass that's still running, so the last bit can start straight away.
+                if stop.isSet { return false }
                 let partial = Self.clean(progress.text)
                 Task { @MainActor [weak self] in
                     guard let self, !partial.isEmpty else { return }
@@ -222,6 +222,7 @@ final class VoiceInput {
         NSLog("ShootDesk voice: pass %.1f s of sound from %.1f s, took %.1f s, %d segments: %@",
               Double(samples.count) / 16_000, Double(confirmedEnd), Date().timeIntervalSince(t0),
               results.flatMap(\.segments).count, results.map(\.text).joined(separator: " | "))
+        if stop.isSet { return }   // stopped early by letting go: incomplete, the final pass redoes this part
         let segments = results.flatMap(\.segments).filter { $0.end > confirmedEnd }
         if settle, segments.count > 1 {
             let done = segments.dropLast()
@@ -245,4 +246,12 @@ final class VoiceInput {
         t = t.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
         return t.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+}
+
+/// A yes/no that a running transcription can check from its own thread.
+final class Flag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+    var isSet: Bool { lock.lock(); defer { lock.unlock() }; return value }
+    func set(_ v: Bool) { lock.lock(); value = v; lock.unlock() }
 }
