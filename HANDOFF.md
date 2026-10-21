@@ -180,8 +180,12 @@ Code read screen by screen (a read-only audit agent) plus screenshots of every t
 - Top spacing under the title bar: Schedule 12 and Listings 14 -> 16, like the other pages.
 - Open Duo stretch: Listing kit is a centred column of at most 720 pt; Open times' intro and length picker are capped.
 Checked in the simulator: open Duo tall (Listings, Customers, Ask, Settings, Money) and wide (Listings, Customers,
-Ask, Settings). Not rechecked: folded and half-open after the change (the simulator's folded pose was stuck sideways),
-Listing kit and Open times after the change. Left alone: the system's own title text sits about 8 pt left of the
+Ask, Settings). Audit continued Oct 20 (simulator): folded (all six tabs, Upcoming check, shoot page), half-open (all
+six tabs, shoot page) and open (Schedule, Open times, Book a shoot, Listing kit) all look right, except Settings: a set
+trailing `contentMargins` on a Form ignores the tab bar's strip, so its panels ran under the tab bar folded and in the
+wide right column. Fixed by leaving the trailing side on the system margin (leading stays on the gutter). Open times'
+Thursday showing only "Until 12 PM" is correct (the 4:30-to-sunset gap is shorter than the 1.5 hr picked). Not
+rechecked after this pass: the agent page and map (taps from automation kept missing; neither changed). Left alone: the system's own title text sits about 8 pt left of the
 gutter on the wide open Duo (iOS places it); the photo viewer's thumbnail strip (full screen, no tab bar there);
 section spacing still varies 18-30 between screens (raise if Kyle wants it uniform). Also noticed, not a layout
 issue: the Upcoming check says "Nothing coming up" until its first check has run after launch.

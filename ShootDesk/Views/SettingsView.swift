@@ -30,11 +30,13 @@ struct SettingsView: View {
                             .contentMargins(.trailing, 10, for: .scrollContent)
                         Form { alertsSection; dataSection; claudeSection; askSection; aboutSection }
                             .contentMargins(.leading, 10, for: .scrollContent)
-                            .contentMargins(.trailing, Gutter.of(size), for: .scrollContent)
+                            // Trailing: the system margin, which stays clear of the tab bar (a set one runs under it).
                     }
                 } else {
+                    // Leading edge on the page gutter. The trailing side keeps the system margin, which (unlike a
+                    // set margin) stays clear of the tab bar down the right edge of the folded Duo.
                     Form { appearanceSection; connectionsSection; moneyErrorSection; alertsSection; dataSection; claudeSection; askSection; aboutSection }
-                        .contentMargins(.horizontal, Gutter.of(size), for: .scrollContent)
+                        .contentMargins(.leading, Gutter.of(size), for: .scrollContent)
                 }
             }
             .scrollContentBackground(.hidden)
