@@ -132,7 +132,8 @@ first (`quickRefresh`) and update the screen, then do the full download; if only
 shown. Follow-up checks (deliveries, Stripe, drive times, the upcoming check) now start after the first download
 that works (`applyFreshOrders`). Today's footer says "Updating… (last updated ...)" only while what's on screen is
 more than 5 minutes old. Checked in the simulator: newest orders saved 10 seconds after launch (was 63), full
-download done at 79; footer "Updated 3 seconds ago" with the full download still going. Installed on Kyle's iPhone Oct 20 (it was locked, so it didn't open by itself). Not seen: the brief
+download done at 79; footer "Updated 3 seconds ago" with the full download still going. Installed on Kyle's iPhone Oct 20 (it was locked, so it didn't open by itself). Kyle confirmed Oct 20 that it worked on his iPhone (his report; the
+overnight case, opening after 12+ hours, still to be seen). Not seen: the brief
 "Updating…" line (over too fast to screenshot). Not checked on the phone yet beyond installing it.
 
 Not checked, and why:
