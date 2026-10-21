@@ -209,7 +209,8 @@ showed one small card with the rest of the wide row blank; it only appears after
 audit screenshots never caught it (not caused by the spacing pass, which only moved the search bar and added 2 pt).
 Now, with one or two flags, Listings and Today show a wide `MissingCard` (photo left; address, agent, what's missing,
 shot date right): one fills the row, two share it; three or more keep the sideways row. Checked in the simulator,
-open Duo held wide. Same pattern, not changed: Today's "This week" row with two cards leaves the right third empty.
+open Duo held wide. Then, at Kyle's request, Today's "This week": up
+to 3 shoots (open) or 1 (folded) share the width in a grid; more keep the sideways row. Checked open, two shoots.
 
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the

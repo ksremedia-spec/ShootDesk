@@ -130,11 +130,30 @@ struct TodayView: View {
                 }
 
                 if upcoming.count > 1 {
-                    Rail(title: "This week", items: Array(upcoming.dropFirst()), cardWidth: wide ? 300 : 240) { j in
-                        NavigationLink(value: AppRoute.shoot(j.id)) {
-                            ShootCard(job: j, showsTime: true).zoomSource(j.id, in: ns)
+                    let week = Array(upcoming.dropFirst())
+                    // Only a few: they share the width (up to 3 across open, 1 folded) instead of a short row
+                    // with empty space after it. More than that: the usual sideways row.
+                    if week.count <= (wide ? 3 : 1) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionHeader(title: "This week")
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14, alignment: .top), count: week.count),
+                                      spacing: 14) {
+                                ForEach(week) { j in
+                                    NavigationLink(value: AppRoute.shoot(j.id)) {
+                                        ShootCard(job: j, showsTime: true).zoomSource(j.id, in: ns)
+                                    }
+                                    .buttonStyle(.pressable)
+                                }
+                            }
                         }
-                        .buttonStyle(.pressable)
+                        .padding(.horizontal, gutter)
+                    } else {
+                        Rail(title: "This week", items: week, cardWidth: wide ? 300 : 240) { j in
+                            NavigationLink(value: AppRoute.shoot(j.id)) {
+                                ShootCard(job: j, showsTime: true).zoomSource(j.id, in: ns)
+                            }
+                            .buttonStyle(.pressable)
+                        }
                     }
                 }
 
