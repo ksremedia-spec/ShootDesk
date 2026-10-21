@@ -58,11 +58,13 @@ struct AskView: View {
             .sensoryFeedback(.impact(weight: .medium), trigger: micTick)
             .slimBar("Ask")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                TitleBarMark {
                     HStack(spacing: 5) {
-                        ClaudeMark(size: 15)
-                        Text("Claude").font(.subheadline.weight(.semibold))
+                        ClaudeMark(size: 16)
+                        Text("Claude").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
+                    .fixedSize()
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Answers by Claude")
                 }

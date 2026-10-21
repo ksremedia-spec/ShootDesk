@@ -195,6 +195,9 @@ the spark in #D97757), stored as `Resources/Assets.xcassets/ClaudeSpark.imageset
 `Views/Components.swift` draws it. Used: Ask's title bar ("Claude" label), Ask's intro, beside each answer (it turns
 gently while Claude writes), and the Listing kit button ("Write it with Claude", white). Kyle decided (Oct 20) to keep
 the app icon as it is: no spark on it.
+The Stripe mark (Money) and the Claude label (Ask) looked boxed in: iOS 26+ puts a glass bubble behind every
+title-bar item. `TitleBarMark` (`Views/Components.swift`) turns it off (`sharedBackgroundVisibility(.hidden)`).
+Checked in the simulator, open Duo held wide.
 
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the

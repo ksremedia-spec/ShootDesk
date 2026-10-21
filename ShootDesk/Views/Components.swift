@@ -663,6 +663,20 @@ extension Color {
     static let claude = Color(red: 0xD9 / 255, green: 0x77 / 255, blue: 0x57 / 255)
 }
 
+/// A brand mark in the title bar (Stripe on Money, Claude on Ask). iOS 26 and later put a glass bubble behind
+/// every title-bar item; a logo looks boxed in with one, so this leaves it off.
+struct TitleBarMark<Content: View>: ToolbarContent {
+    @ViewBuilder var content: () -> Content
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: .topBarTrailing) { content() }
+                .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .topBarTrailing) { content() }
+        }
+    }
+}
+
 /// Stripe's wordmark, shown next to anything that comes from Stripe.
 struct StripeMark: View {
     var height: CGFloat = 14

@@ -33,7 +33,7 @@ struct MoneyView: View {
             .background(Color(.systemBackground))
             .slimBar("Money")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { StripeMark(height: 18) }
+                TitleBarMark { StripeMark(height: 18) }
             }
             .refreshable { await model.refreshMoney() }
             .appDestinations(ns)
