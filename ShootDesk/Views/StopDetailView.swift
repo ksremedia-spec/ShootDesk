@@ -143,6 +143,15 @@ struct StopDetailView: View {
                                        .init(color: Color(.systemBackground), location: 1)],
                                startPoint: .top, endPoint: .bottom)
                     .allowsHitTesting(false)
+                // The sides melt into the page the same way, so the photo has no hard edge against the dark
+                // strip by the tab bar. Wider on the open Duo, where there's more photo to spare.
+                let side: CGFloat = wide ? 0.07 : 0.04
+                LinearGradient(stops: [.init(color: Color(.systemBackground), location: 0),
+                                       .init(color: .clear, location: side),
+                                       .init(color: .clear, location: 1 - side),
+                                       .init(color: Color(.systemBackground), location: 1)],
+                               startPoint: .leading, endPoint: .trailing)
+                    .allowsHitTesting(false)
             }
 
             heroText
