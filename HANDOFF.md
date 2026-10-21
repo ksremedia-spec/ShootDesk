@@ -231,6 +231,10 @@ the house number, the agent on photo cards. Still on the old date art: the shoot
 position, Ask's small shoot chips (`DateTile`). Checked in the simulator, folded, dark mode. Not checked: light mode,
 the open Duo.
 
+Oct 21, Kyle: an order with no appointment time isn't a confirmed shoot, so Listings' Upcoming shows only booked
+shoots with a time (was: those plus "date to be set" orders at the end). Simulator: Upcoming 11 -> 4. Those orders
+still show in search and on the agent's page; Today already required a time.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.

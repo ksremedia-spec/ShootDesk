@@ -28,10 +28,10 @@ struct ListingsView: View {
     private func placed(_ j: Job) -> Date { FieldTime.parse(j.order.createdAt) ?? .distantPast }
 
     private var upcoming: [Job] {
-        let timed = model.visibleJobs.filter { $0.status == .booked }
+        // Only confirmed appointments: an order with no time set yet isn't a booked shoot (Kyle, Oct 21).
+        // Those still turn up in search and on the agent's page.
+        model.visibleJobs.filter { $0.status == .booked && $0.start != nil }
             .sorted { ($0.start ?? .distantFuture) < ($1.start ?? .distantFuture) }
-        let tbd = model.visibleJobs.filter { $0.status == .unscheduled }.sorted { placed($0) > placed($1) }
-        return timed + tbd
     }
 
     /// Shoots that have happened, newest first.
