@@ -42,9 +42,13 @@ final class VoiceInput {
         try? d.setResourceValues(values)
         return dir
     }
+    /// The model's folder. Saved relative to the app's own WhisperKit folder: the app's full path on the phone
+    /// changes with every reinstall or update, so a saved full path stopped matching and voice asked to download
+    /// again (seen Oct 21). Older saved full paths are read by their tail.
     private var savedFolder: URL? {
-        guard let p = UserDefaults.standard.string(forKey: Self.folderKey) else { return nil }
-        let url = URL(fileURLWithPath: p)
+        guard var p = UserDefaults.standard.string(forKey: Self.folderKey) else { return nil }
+        if let r = p.range(of: "/WhisperKit/") { p = String(p[r.upperBound...]) }
+        let url = Self.base.appendingPathComponent(p, isDirectory: true)
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 
@@ -69,7 +73,8 @@ final class VoiceInput {
                 let f = progress.fractionCompleted
                 Task { @MainActor in self.phase = .downloading(f) }
             }
-            UserDefaults.standard.set(folder.path, forKey: Self.folderKey)
+            let full = folder.standardizedFileURL.path, root = Self.base.standardizedFileURL.path + "/"
+            UserDefaults.standard.set(full.hasPrefix(root) ? String(full.dropFirst(root.count)) : full, forKey: Self.folderKey)
             await prepare()
         } catch {
             phase = .failed("The voice download stopped: \(error.localizedDescription)")

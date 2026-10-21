@@ -73,6 +73,12 @@ struct AskView: View {
                     .accessibilityLabel("Answers by Claude")
                 }
                 }
+                // Folded: in the side strip just above the tab bar (a bottom-bar item goes there on the Duo).
+                if !turns.isEmpty && size != .regular {
+                    ToolbarItem(placement: .bottomBar) {
+                        Button { newConversation() } label: { Label("New question", systemImage: "square.and.pencil") }
+                    }
+                }
                 if !turns.isEmpty && size == .regular {
                     ToolbarItem(placement: .primaryAction) {
                         Button { newConversation() } label: { Label("New question", systemImage: "square.and.pencil") }
@@ -156,6 +162,13 @@ struct AskView: View {
             .onChange(of: turns.last?.answer?.count ?? 0) { _, _ in
                 if thinking, (turns.last?.answer?.count ?? 0) > 400 { proxy.scrollTo("bottom", anchor: .bottom) }
             }
+            // When a short answer is done, bring its follow-up questions up above the talk button.
+            // (A long one stays where it is, so you can read it from the top.)
+            .onChange(of: thinking) { was, now in
+                if was, !now, (turns.last?.answer?.count ?? 0) < 1200 {
+                    withAnimation(.snappy) { proxy.scrollTo("bottom", anchor: .bottom) }
+                }
+            }
         }
         .safeAreaInset(edge: .bottom) { inputArea }
     }
@@ -198,8 +211,10 @@ struct AskView: View {
 
     private var listening: Bool { voice.phase == .listening }
 
+    /// Voice only (Kyle, Oct 21): one big talk button, held to ask. No text box. While you hold, the words appear
+    /// above it. Folded, the new-question button sits to its left (the open Duo has it in the title bar).
     private var inputArea: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             if let line = voiceStatusLine {
                 Text(line)
                     .font(.footnote).foregroundStyle(.secondary)
@@ -207,59 +222,28 @@ struct AskView: View {
                     .background(.regularMaterial, in: Capsule())
                     .transition(.opacity)
             }
-            HStack(spacing: 8) {
-                if size != .regular, !turns.isEmpty, !listening, voice.phase != .transcribing,
-                   draft.trimmingCharacters(in: .whitespaces).isEmpty {
-                    Button { newConversation() } label: {
-                        Image(systemName: "square.and.pencil")
-                            .font(.body.weight(.semibold))
-                            .frame(width: 38, height: 38)
-                            .background(Color(.tertiarySystemFill), in: Circle())
-                            .foregroundStyle(Theme.accent)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("New question")
-                    .padding(.leading, -10)
-                }
-                if listening || voice.phase == .transcribing {
-                    ListeningBar(level: voice.level, text: voice.liveText, transcribing: voice.phase == .transcribing)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    TextField("Ask about shoots, agents, money…", text: $draft, axis: .vertical)
-                        .lineLimit(1...4)
-                        .focused($focused)
-                        .submitLabel(.send)
-                        .onSubmit { ask(draft) }
-                        // A multi-line field turns Return into a new line; treat it as Send instead.
-                        .onChange(of: draft) { _, v in
-                            if v.hasSuffix("\n") { draft.removeLast(); ask(draft) }
-                        }
-                }
-                if draft.trimmingCharacters(in: .whitespaces).isEmpty && !listening {
-                    micButton
-                } else if !listening {
-                    Button { ask(draft) } label: {
-                        Image(systemName: "arrow.up")
-                            .font(.body.weight(.bold))
-                            .frame(width: 38, height: 38)
-                            .background(Theme.accent, in: Circle())
-                            .foregroundStyle(.white)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(thinking || model.claude == nil)
-                    .accessibilityLabel("Send")
-                } else {
-                    micButton
-                }
+            if listening || voice.phase == .transcribing {
+                ListeningBar(level: voice.level, text: voice.liveText, transcribing: voice.phase == .transcribing)
+                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    .frame(maxWidth: 520, alignment: .leading)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
-            .padding(.leading, 16)
-            .padding(.trailing, 6)
-            .padding(.vertical, 6)
-            .background(.regularMaterial, in: Capsule())
-            .overlay(Capsule().stroke(listening ? Theme.accent.opacity(0.6) : .clear, lineWidth: 1.5))
+            micButton
         }
-        .padding(.horizontal, Gutter.of(size) - 6)
-        .padding(.bottom, 6)
+        .padding(.horizontal, Gutter.of(size))
+        .padding(.top, 28)
+        .padding(.bottom, 8)
+        .frame(maxWidth: .infinity)
+        // A soft fade behind the button, so an answer's text melts away under it instead of showing through.
+        .background(alignment: .bottom) {
+            LinearGradient(stops: [.init(color: Color(.systemBackground).opacity(0), location: 0),
+                                   .init(color: Color(.systemBackground).opacity(0.92), location: 0.55),
+                                   .init(color: Color(.systemBackground), location: 1)],
+                           startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea(edges: .bottom)
+                .allowsHitTesting(false)
+        }
         .animation(.snappy, value: voice.phase)
         .animation(.snappy, value: voiceNote)
     }
@@ -269,7 +253,8 @@ struct AskView: View {
         switch voice.phase {
         case .downloading(let f): return "Downloading voice… \(Int(f * 100))%"
         case .preparing where holding: return "Getting voice ready… the first time can take a couple of minutes"
-        case .listening: return "Listening. Let go to send, slide up to cancel."
+        case .listening: return "Let go to send, slide up to cancel"
+        case .ready where turns.isEmpty && !thinking: return "Hold to ask"
         case .failed(let m): return m
         default: return nil
         }
@@ -278,12 +263,14 @@ struct AskView: View {
     /// Hold to talk: finger down starts recording, finger up sends, sliding up and away cancels.
     private var micButton: some View {
         Image(systemName: listening ? "waveform" : "mic.fill")
-            .font(.body.weight(.semibold))
+            .font(.title2.weight(.semibold))
             .symbolEffect(.variableColor.iterative, isActive: listening)
-            .frame(width: 38, height: 38)
-            .background(listening ? Theme.accent : Color(.tertiarySystemFill), in: Circle())
-            .foregroundStyle(listening ? .white : Theme.accent)
-            .scaleEffect(holding ? 1.15 : 1)
+            .frame(width: 68, height: 68)
+            .background(Theme.accent, in: Circle())
+            .foregroundStyle(.white)
+            .shadow(color: Theme.accent.opacity(listening ? 0.55 : 0.25), radius: listening ? 18 : 8)
+            .opacity(thinking ? 0.45 : 1)
+            .scaleEffect(holding ? 1.12 : 1)
             .animation(.snappy, value: holding)
             .contentShape(Circle())
             .gesture(

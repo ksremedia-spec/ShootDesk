@@ -254,6 +254,18 @@ Stripe mark moves into the page), and the folded gutter is 14 instead of 18 (`Gu
 its title row is gone, the new-question button sits at the left of the input bar, and the "Claude" label shows only
 on the open Duo (the spark is beside every answer). Checked in the simulator, folded.
 
+Oct 21, Ask is voice only (Kyle won't type much): the text box is gone; one big talk button (hold to ask) at the
+bottom, with a soft fade behind it so answer text melts away under it; the suggested questions still work by tap.
+Folded, the new-question button is a bottom-bar toolbar item, which iOS 27.1 places in the right-hand strip under
+the clock (Kyle asked for just above the tab bar; iOS picks the spot). Claude: effort `low` for snappier answers
+(about 6 s to the first words, 9 s done in the simulator); the prompt now expects speech-to-text and only asks one
+short question back when it truly can't tell what Kyle means (not tested: needs a spoken question). Short answers
+scroll up when done so their follow-up chips clear the button.
+Bug fixed: voice asked to download again after every reinstall or update, because the model's full folder path was
+saved and the app's path changes on reinstall. Now saved relative to `Application Support/WhisperKit` (old saved
+paths are read by their tail). Checked in the simulator: no download prompt after reinstall. Holding to talk in
+the simulator uses the Mac's microphone, so it may work there; not tried.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.
