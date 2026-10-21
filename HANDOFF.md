@@ -347,6 +347,17 @@ on-device engine and tap-to-talk (he dislikes holding), auto-send after 2 s of q
 - Installed on Kyle's iPhone 16 Pro Max Oct 21. Simulator can't run the speech engine; this glow version and the
   open Duo were not seen by me.
 
+## Oct 21: Ask starts fresh (Kyle: long threads would pile up; he doesn't want saved chats)
+
+- Kyle on the listening look: "pretty bang on". Voice in Ask is done for now.
+- 30 minutes without a question (asked or answered) and Ask opens clean: intro, suggestions, mic. Checked when Ask
+  shows, when the app comes back to the front, and when the saved conversation loads (`AskHistory.isStale`,
+  `freshAfter`, UserDefaults "askLastUsed"). The new-question button still clears it sooner. The first launch of
+  this build clears the old thread (no "last used" time yet).
+- Only the last 4 questions and answers go to Claude with a new one (`AskHistory.followUpTurns`); it used to send
+  every saved one (up to 40).
+- Installed on Kyle's iPhone 16 Pro Max Oct 21; not yet seen there.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.

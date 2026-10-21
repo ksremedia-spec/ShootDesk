@@ -6,6 +6,7 @@ import SwiftUI
 struct AskView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var size
+    @Environment(\.scenePhase) private var scenePhase
     @Namespace private var ns
     @State private var turns: [Turn] = AskHistory.load()
     @State private var draft = ""
@@ -84,6 +85,9 @@ struct AskView: View {
             }
             .appDestinations(ns)
             .onChange(of: turns) { _, t in AskHistory.save(t) }
+            // Back after a while: start fresh (Kyle, Oct 21). Checked when Ask shows and when the app comes back.
+            .onAppear { clearIfStale() }
+            .onChange(of: scenePhase) { _, p in if p == .active { clearIfStale() } }
             .task {
                 // Make sure iOS has its speech model, so the first tap starts listening at once.
                 voice.onAutoSend = { q in ask(q) }
@@ -305,6 +309,12 @@ struct AskView: View {
 
     // MARK: Asking
 
+    /// 30 minutes without a question and the old conversation goes; Ask opens clean, with the suggestions and the mic.
+    private func clearIfStale() {
+        guard !turns.isEmpty, !thinking, !listening, AskHistory.isStale() else { return }
+        newConversation()
+    }
+
     private func newConversation() {
         askTask?.cancel()
         thinking = false
@@ -316,10 +326,13 @@ struct AskView: View {
         guard !q.isEmpty, !thinking, let claude = model.claude else { return }
         draft = ""
         focused = false
-        let history = turns.filter { !$0.failed }.compactMap { t in t.answer.map { (q: t.question, a: $0) } }
+        // Only the last few exchanges go along: enough for follow-ups, and answers stay quick however long it gets.
+        let history = Array(turns.filter { !$0.failed }.compactMap { t in t.answer.map { (q: t.question, a: $0) } }
+            .suffix(AskHistory.followUpTurns))
         let turn = Turn(question: q)
         turns.append(turn)
         thinking = true
+        AskHistory.touch()
         sendTick += 1
         AskSounds.play(.send)
         let jobs = model.jobs.filter { $0.status != .stale }
@@ -359,6 +372,7 @@ struct AskView: View {
                 turns[i].failed = failed
             }
             thinking = false
+            AskHistory.touch()
             if !failed { AskSounds.play(.done) }
         }
     }
@@ -371,7 +385,22 @@ enum AskHistory {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("ShootDesk", isDirectory: true).appendingPathComponent("ask.json")
     }
+    /// A conversation left this long is cleared the next time Ask opens.
+    static let freshAfter: TimeInterval = 30 * 60
+    /// How many earlier questions and answers go to Claude with a new question.
+    static let followUpTurns = 4
+    private static let lastUsedKey = "askLastUsed"
+
+    /// Marks the conversation as just used (a question asked or answered).
+    static func touch() { UserDefaults.standard.set(Date(), forKey: lastUsedKey) }
+
+    static func isStale(now: Date = Date()) -> Bool {
+        guard let last = UserDefaults.standard.object(forKey: lastUsedKey) as? Date else { return true }
+        return now.timeIntervalSince(last) > freshAfter
+    }
+
     static func load() -> [AskView.Turn] {
+        if isStale() { return [] }
         guard let d = try? Data(contentsOf: url), let t = try? JSONDecoder().decode([AskView.Turn].self, from: d) else { return [] }
         // An answer that was still being written when the app closed is shown as stopped.
         return t.map { var x = $0; if x.answer == nil { x.answer = "This answer was interrupted."; x.failed = true }; return x }
