@@ -232,13 +232,13 @@ struct AskView: View {
                         ListeningPanel(voice: voice, level: voiceLevel,
                                        cancel: { voice.cancel(); AskSounds.play(.micOff); micTick += 1 },
                                        send: { Task { let q = await voice.finish(); AskSounds.play(.micOff); if !q.isEmpty { ask(q) } } })
-                            // A little in from the edges on the folded screen (Kyle, Oct 21); capped on the open Duo.
-                            .padding(.horizontal, 12)
-                            .frame(maxWidth: 520)
+                            // Well in from the edges on the folded screen (Kyle, Oct 21: "still too big"); capped on the open Duo.
+                            .padding(.horizontal, 24)
+                            .frame(maxWidth: 460)
                             .frame(width: max(0, panelWidth - 2 * Gutter.of(size)))
                             .transition(.asymmetric(
                                 insertion: .opacity.combined(with: .scale(scale: 0.92, anchor: .bottom)).combined(with: .offset(y: 10)),
-                                removal: .opacity.combined(with: .scale(scale: 0.96, anchor: .bottom))))
+                                removal: .opacity.combined(with: .scale(scale: 0.97, anchor: .bottom))))
                     }
                 }
         }
@@ -401,41 +401,41 @@ struct ListeningPanel: View {
     @State private var pulse = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Circle().fill(Color.red).frame(width: 9, height: 9)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 7) {
+                Circle().fill(Color.red).frame(width: 8, height: 8)
                     .opacity(pulse ? 0.35 : 1)
                     .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true), value: pulse)
                     .onAppear { pulse = true }
                 Text(voice.phase == .finishing ? "Sending" : "Listening")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.accent)
+                    .contentTransition(.opacity)
                 Spacer()
             }
-            VoiceWave(level: level)
-                .frame(height: 38)
             if !voice.text.isEmpty {
-                (Text(voice.settledText.isEmpty ? "" : voice.settledText + " ")
-                    + Text(voice.guessText).foregroundStyle(.secondary))
+                words
                     .font(.body)
                     .lineLimit(4)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentTransition(.opacity)
-                    .animation(.easeOut(duration: 0.15), value: voice.text)
+                    .transition(.opacity)
             }
-            HStack {
+            // X, the wave and send share one row, which keeps the panel short.
+            HStack(spacing: 10) {
                 Button(action: cancel) {
-                    Image(systemName: "xmark").font(.body.weight(.semibold))
-                        .frame(width: 44, height: 44)
+                    Image(systemName: "xmark").font(.subheadline.weight(.semibold))
+                        .frame(width: 36, height: 36)
                         .background(Color(.tertiarySystemFill), in: Circle())
                         .foregroundStyle(.primary)
                 }
                 .buttonStyle(.pressable)
                 .accessibilityLabel("Cancel")
-                Spacer()
+                VoiceWave(level: level)
+                    .frame(height: 30)
                 Button(action: send) {
-                    Image(systemName: "arrow.up").font(.body.weight(.bold))
-                        .frame(width: 44, height: 44)
+                    Image(systemName: "arrow.up").font(.subheadline.weight(.bold))
+                        .frame(width: 36, height: 36)
                         .background(Theme.accent, in: Circle())
                         .foregroundStyle(.white)
                 }
@@ -445,9 +445,26 @@ struct ListeningPanel: View {
                 .accessibilityLabel("Send")
             }
         }
-        .padding(14)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.accent.opacity(0.55), lineWidth: 1.5))
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Theme.accent.opacity(0.55), lineWidth: 1.5))
+        // Its own natural height, whatever room it was offered (it sits over the mic's spot and grows upward).
+        .fixedSize(horizontal: false, vertical: true)
+        .animation(.easeOut(duration: 0.18), value: voice.text)
+    }
+
+    /// What you've said, settled words then the grey guess. A long question shows its latest words, with the start
+    /// trimmed to "…", so the newest words are never the ones cut off.
+    private var words: Text {
+        var settled = voice.settledText
+        let guess = voice.guessText
+        let room = 150 - guess.count
+        if settled.count > room {
+            var tail = String(settled.suffix(max(0, room)))
+            if let space = tail.firstIndex(of: " ") { tail = String(tail[tail.index(after: space)...]) }
+            settled = "…" + tail
+        }
+        return Text(settled.isEmpty ? "" : settled + " ") + Text(guess).foregroundStyle(.secondary)
     }
 }
 

@@ -116,7 +116,7 @@ final class VoiceInput {
         NSLog("ShootDesk voice: final text %.2f s after stopping", Date().timeIntervalSince(t0))
         session = nil
         let q = text
-        settledText = ""; guessText = ""
+        // The words stay put while the panel fades out; start() clears them.
         phase = .idle
         return q
     }
@@ -128,7 +128,6 @@ final class VoiceInput {
             Task { await live.cancel() }
         }
         session = nil
-        settledText = ""; guessText = ""
         phase = .idle
     }
 

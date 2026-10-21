@@ -327,9 +327,14 @@ on-device engine and tap-to-talk (he dislikes holding), auto-send after 2 s of q
   over it growing upward, so the chat above no longer jumps; a softer spring; the audio session switches on off the
   main thread (`LiveSession.start`) so it can't stall the animation; the panel sits 12 pt further in from each side
   folded (26 pt in all) and is capped at 520 pt wide on the open Duo (was 560, edge to edge folded).
-- Installed on Kyle's iPhone 16 Pro Max Oct 21, not yet seen there. Simulator can't run the speech engine; the
-  glow was seen folded (with a temporary fake-listening switch, since removed); the wave, the smoother opening and
-  the open Duo were not.
+- Kyle, on his phone: words stopped after one line, panel still too big, sending was janky. Causes and fixes:
+  the panel is an overlay on the mic's 68 pt spot and was squeezed to that height (one line, newest words cut off):
+  now `.fixedSize(vertical:)`, up to 4 lines, and a long question shows its latest words with the start trimmed
+  to "…". Smaller: X, wave and send on one row (36 pt buttons), 12 pt padding, 38 pt in from each side folded,
+  460 pt max open. Sending: the words were cleared the instant it sent, so the panel collapsed as it faded; they
+  now stay until the next tap (`VoiceInput.finish`/`cancel`).
+- Installed on Kyle's iPhone 16 Pro Max Oct 21. Simulator can't run the speech engine; the glow was seen folded
+  (with a temporary fake-listening switch, since removed); the latest panel and the open Duo were not.
 
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
