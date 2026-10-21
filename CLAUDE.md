@@ -49,3 +49,4 @@ Current state, unbuilt changes and the verification list live in `HANDOFF.md`. R
 - Clicks from automation on toolbar buttons in the Duo's side column are unreliable (sometimes two taps, sometimes none). Prefer in-page controls for anything important.
 - Typing into the simulator from automation doesn't work reliably; test text fields by hand.
 - Screenshots of the Duo: in the Closed pose `simctl io ... screenshot` needs `--display=primary` (without it the picture is black); in the Open and Partially Open poses use it without `--display`. Pictures sometimes lag a few seconds behind the screen; wait, or compare with the Device Hub window.
+- Device Hub's Closed / Partially Open / Open buttons can go missing (seen Oct 19-20 after Device Hub quit on its own and was reopened, and in windows made with File > New Window). Fix: Device Hub menu > Quit and Keep Simulators Running, then open Device Hub again; the buttons come back and the simulator keeps its state.
