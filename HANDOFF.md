@@ -372,6 +372,7 @@ on-device engine and tap-to-talk (he dislikes holding), auto-send after 2 s of q
 - Keys: they don't sync over iCloud, but Kyle's wired phone-to-phone transfer carried the Keychain across
   (`kSecAttrAccessibleAfterFirstUnlock`, not "this device only"), so ShootDesk found its keys on first launch.
   The order cache didn't come (Xcode-installed apps aren't transferred); it re-downloaded everything from Aryeo.
+  The Stripe key has only ever been entered in the simulator, never on a phone; Kyle will add it when he wants it.
 - The first launch was blocked ("Unable to verify app ... internet connection is required"): the Duo's one-time
   check with ppq.apple.com hadn't gone through. No "Developer App" entry showed in VPN & Device Management (paid
   account). Kyle got in after the network steps; reinstalling alone didn't fix it.
