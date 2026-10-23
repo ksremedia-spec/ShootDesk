@@ -361,6 +361,17 @@ on-device engine and tap-to-talk (he dislikes holding), auto-send after 2 s of q
   every saved one (up to 40).
 - Installed on Kyle's iPhone 16 Pro Max Oct 21; not yet seen there.
 
+## Oct 23: ShootDesk on Kyle's real iPhone Duo
+
+- The Duo is `00008160-001E15AC11300036` (iPhone19,4); the iPhone 16 Pro Max is `00008140-0002190E11E1801C`.
+  Build with `-destination 'id=<id>' DEVELOPMENT_TEAM=6YCK9MG5RD -allowProvisioningUpdates
+  -allowProvisioningDeviceRegistration`, then `xcrun devicectl device install app`.
+- First time on the Duo: it had to trust the Mac (`devicectl manage pair` puts up the prompt) and Kyle turned on
+  Developer Mode (Settings > Privacy & Security, bottom). The first build failed with a missing .mobileprovision
+  (the profile was remade to add the Duo); building again worked. Installed Oct 23.
+- Keys don't move between phones (Keychain items aren't set to sync): Aryeo, Claude and Stripe keys have to be
+  entered again in Settings on the Duo.
+
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
   screen that creates real orders). Try picking an agent, address, package and time by hand; never press Book it.
