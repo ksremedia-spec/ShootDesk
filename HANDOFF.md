@@ -369,8 +369,12 @@ on-device engine and tap-to-talk (he dislikes holding), auto-send after 2 s of q
 - First time on the Duo: it had to trust the Mac (`devicectl manage pair` puts up the prompt) and Kyle turned on
   Developer Mode (Settings > Privacy & Security, bottom). The first build failed with a missing .mobileprovision
   (the profile was remade to add the Duo); building again worked. Installed Oct 23.
-- Keys don't move between phones (Keychain items aren't set to sync): Aryeo, Claude and Stripe keys have to be
-  entered again in Settings on the Duo.
+- Keys: they don't sync over iCloud, but Kyle's wired phone-to-phone transfer carried the Keychain across
+  (`kSecAttrAccessibleAfterFirstUnlock`, not "this device only"), so ShootDesk found its keys on first launch.
+  The order cache didn't come (Xcode-installed apps aren't transferred); it re-downloaded everything from Aryeo.
+- The first launch was blocked ("Unable to verify app ... internet connection is required"): the Duo's one-time
+  check with ppq.apple.com hadn't gone through. No "Developer App" entry showed in VPN & Device Management (paid
+  account). Kyle got in after the network steps; reinstalling alone didn't fix it.
 
 Not checked, and why:
 - Filling in Book a shoot: the automatic safety check blocks automation from working the booking form (it's the
