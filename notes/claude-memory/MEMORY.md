@@ -1,0 +1,2 @@
+- [Builds are local](builds-are-local.md) — Kyle builds on his Mac now; no GitHub cloud builds needed
+- [No hint text](no-hint-text.md) — Kyle doesn't want instruction captions in the app UI; use icons/motion/haptics

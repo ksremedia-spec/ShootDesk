@@ -8,6 +8,8 @@ Avoid fix loops. If the same error survives two attempts, stop and explain.
 
 Current state, unbuilt changes and the verification list live in `HANDOFF.md`. Read it at the start of a session and keep it current as you go.
 
+Copies of Claude's memory notes and helper-session notes are in `notes/` (see `notes/README.md`). If your memory for this project is empty, restore it from `notes/claude-memory/`.
+
 ## Project
 
 **Build setup**
